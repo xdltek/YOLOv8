@@ -10,6 +10,8 @@
 
 - [Overview](#overview)
 - [Key Features](#key-features)
+- [Code Structure](#code-structure)
+- [Execution Flow Diagram](#execution-flow-diagram)
 - [System Architecture](#system-architecture)
 - [Build & Run](#build--run)
 - [Model Export](#model-export)
@@ -39,6 +41,92 @@ This project delivers a production-ready YOLOv8 object detection framework desig
 - ✅ **Bidirectional Pipelines**: CSV/preprocess → inference → NMS → visualization
 - ✅ **Performance Metrics**: Real-time FPS & latency logging per run
 - ✅ **Production-Ready**: Full CMake integration, error handling, logging
+
+---
+
+## 📁 Code Structure
+
+```
+YOLOv8/
+│
+├── yolo/                              # Core inference implementation
+│   ├── yolo_main.cpp                  # CLI entry + CPU ONNXRuntime path
+│   ├── yolov8.cpp                     # RPP/GPU build/infer/postprocess
+│   └── yolov8.h                       # Yolov8s class interface
+│
+├── common/                            # Shared utilities
+│   ├── infer/
+│   │   ├── infer_sample_base.h/cpp    # Base SampleModel class
+│   │   └── ...
+│   ├── calibrator/                    # INT8 quantization tools
+│   ├── logger.h/cpp                   # Logging framework
+│   └── rpp_buffer_manager.h           # GPU memory management
+│
+├── export.py                          # YOLOv8 → ONNX export script
+├── requirements.txt                   # Python dependencies
+├── CMakeLists.txt                     # Build configuration
+└── README.md                          # This file
+```
+
+---
+
+## 🔄 Execution Flow Diagram
+
+```mermaid
+%%{init: {'theme':'default', 'themeVariables': {'primaryFontFamily': 'Inter, Roboto, -apple-system, system-ui, sans-serif', 'fontSize': '14px', 'fontFamily': 'Inter, Roboto, -apple-system, system-ui, sans-serif', 'primaryColor': '#4A90E2', 'primaryBorderColor': '#2E5C8A', 'primaryTextColor': '#fff', 'successBkgColor': '#50C878', 'successTextColor': '#fff'}, 'flowchart': {'htmlLabels': true}}}%%
+graph TD
+    Start["<b style='font-family: Inter, Roboto, sans-serif; font-size: 15px'>YOLOv8 Demo</b><br/><span style='font-family: Inter, Roboto, sans-serif'>main - Parse CLI Args</span>"] --> Validate["<span style='font-family: Inter, Roboto, sans-serif'>Validate Model</span>"]
+    Validate --> Decision{"-d" Option}
+    
+    Decision -->|cpu| CPUSubgraph["<span style='font-family: Inter, Roboto, sans-serif'>CPU Backend</span>"]
+    Decision -->|rpp| RPPSubgraph["<span style='font-family: Inter, Roboto, sans-serif'>RPP Backend</span>"]
+    
+    subgraph CPU["<b style='font-family: Inter, Roboto, sans-serif'>━━━ CPU Path ━━━</b>"]
+        C1["<span style='font-family: Inter, Roboto, sans-serif'>📂 Load ONNX Model<br/>Ort::Session</span>"]
+        C2["<span style='font-family: Inter, Roboto, sans-serif'>📏 Read Input/Output Shapes</span>"]
+        C3["<span style='font-family: Inter, Roboto, sans-serif'>🖼️ Preprocess Image</span>"]
+        C4["<span style='font-family: Inter, Roboto, sans-serif'>▶️ session.Run<br/>Warmup + Timed Loops</span>"]
+        C5["<span style='font-family: Inter, Roboto, sans-serif'>🎯 Postprocess & NMS</span>"]
+        C6["<span style='font-family: Inter, Roboto, sans-serif'>💾 Save output.jpg</span>"]
+        
+        C1 --> C2 --> C3 --> C4 --> C5 --> C6
+    end
+    
+    subgraph RPP["<b style='font-family: Inter, Roboto, sans-serif'>━━━ RPP Path ━━━</b>"]
+        R1["<span style='font-family: Inter, Roboto, sans-serif'>🔨 Yolov8s::build<br/>IBuilder + Parse ONNX</span>"]
+        R2["<span style='font-family: Inter, Roboto, sans-serif'>⚙️ Configure Precision<br/>BF16 or INT8</span>"]
+        R3["<span style='font-family: Inter, Roboto, sans-serif'>🖼️ Preprocess Image</span>"]
+        R4["<span style='font-family: Inter, Roboto, sans-serif'>▶️ context->execute<br/>Warmup + Timed Loops</span>"]
+        R5["<span style='font-family: Inter, Roboto, sans-serif'>🎯 Postprocess & NMS</span>"]
+        R6["<span style='font-family: Inter, Roboto, sans-serif'>💾 Save output.jpg</span>"]
+        
+        R1 --> R2 --> R3 --> R4 --> R5 --> R6
+    end
+    
+    CPUSubgraph --> CPU
+    RPPSubgraph --> RPP
+    
+    C6 --> End["<span style='font-family: Inter, Roboto, sans-serif'>✅ Complete Inference<br/>Log Latency & FPS</span>"]
+    R6 --> End
+    
+    style Start fill:#4A90E2,stroke:#2E5C8A,color:#fff,font-weight:bold,font-family:Inter
+    style End fill:#50C878,stroke:#2D7A47,color:#fff,font-weight:bold,font-family:Inter
+    style Decision fill:#FFB84D,stroke:#CC8533,color:#000,font-weight:bold,font-family:Inter
+    style CPU fill:#E8F4F8,stroke:#4A90E2,font-family:Inter
+    style RPP fill:#FFF0E8,stroke:#E8844B,font-family:Inter
+    style C1 font-family:Inter
+    style C2 font-family:Inter
+    style C3 font-family:Inter
+    style C4 font-family:Inter
+    style C5 font-family:Inter
+    style C6 font-family:Inter
+    style R1 font-family:Inter
+    style R2 font-family:Inter
+    style R3 font-family:Inter
+    style R4 font-family:Inter
+    style R5 font-family:Inter
+    style R6 font-family:Inter
+```
 
 ---
 
@@ -120,32 +208,6 @@ This project delivers a production-ready YOLOv8 object detection framework desig
 1. Release execution context
 2. Deallocate GPU memory (RPP)
 3. Auto-cleanup via smart pointers
-
----
-
-## Code Structure
-
-```
-YOLOv8/
-│
-├── yolo/                              # Core inference implementation
-│   ├── yolo_main.cpp                  # CLI entry + CPU ONNXRuntime path
-│   ├── yolov8.cpp                     # RPP/GPU build/infer/postprocess
-│   └── yolov8.h                       # Yolov8s class interface
-│
-├── common/                            # Shared utilities
-│   ├── infer/
-│   │   ├── infer_sample_base.h/cpp    # Base SampleModel class
-│   │   └── ...
-│   ├── calibrator/                    # INT8 quantization tools
-│   ├── logger.h/cpp                   # Logging framework
-│   └── rpp_buffer_manager.h           # GPU memory management
-│
-├── export.py                          # YOLOv8 → ONNX export script
-├── requirements.txt                   # Python dependencies
-├── CMakeLists.txt                     # Build configuration
-└── README.md                          # This file
-```
 
 ---
 
@@ -263,66 +325,6 @@ Example:
 yolov8m.onnx          → BF16 / FP32
 yolov8m.int8.onnx     → INT8
 yolov8m.quant.onnx    → INT8
-```
-
----
-
-## Execution Flow Diagram
-
-```mermaid
-%%{init: {'theme':'default', 'themeVariables': {'primaryFontFamily': 'Inter, Roboto, -apple-system, system-ui, sans-serif', 'fontSize': '14px', 'fontFamily': 'Inter, Roboto, -apple-system, system-ui, sans-serif', 'primaryColor': '#4A90E2', 'primaryBorderColor': '#2E5C8A', 'primaryTextColor': '#fff', 'successBkgColor': '#50C878', 'successTextColor': '#fff'}, 'flowchart': {'htmlLabels': true}}}%%
-graph TD
-    Start["<b style='font-family: Inter, Roboto, sans-serif; font-size: 15px'>YOLOv8 Demo</b><br/><span style='font-family: Inter, Roboto, sans-serif'>main - Parse CLI Args</span>"] --> Validate["<span style='font-family: Inter, Roboto, sans-serif'>Validate Model</span>"]
-    Validate --> Decision{"-d" Option}
-    
-    Decision -->|cpu| CPUSubgraph["<span style='font-family: Inter, Roboto, sans-serif'>CPU Backend</span>"]
-    Decision -->|rpp| RPPSubgraph["<span style='font-family: Inter, Roboto, sans-serif'>RPP Backend</span>"]
-    
-    subgraph CPU["<b style='font-family: Inter, Roboto, sans-serif'>━━━ CPU Path ━━━</b>"]
-        C1["<span style='font-family: Inter, Roboto, sans-serif'>📂 Load ONNX Model<br/>Ort::Session</span>"]
-        C2["<span style='font-family: Inter, Roboto, sans-serif'>📏 Read Input/Output Shapes</span>"]
-        C3["<span style='font-family: Inter, Roboto, sans-serif'>🖼️ Preprocess Image</span>"]
-        C4["<span style='font-family: Inter, Roboto, sans-serif'>▶️ session.Run<br/>Warmup + Timed Loops</span>"]
-        C5["<span style='font-family: Inter, Roboto, sans-serif'>🎯 Postprocess & NMS</span>"]
-        C6["<span style='font-family: Inter, Roboto, sans-serif'>💾 Save output.jpg</span>"]
-        
-        C1 --> C2 --> C3 --> C4 --> C5 --> C6
-    end
-    
-    subgraph RPP["<b style='font-family: Inter, Roboto, sans-serif'>━━━ RPP Path ━━━</b>"]
-        R1["<span style='font-family: Inter, Roboto, sans-serif'>🔨 Yolov8s::build<br/>IBuilder + Parse ONNX</span>"]
-        R2["<span style='font-family: Inter, Roboto, sans-serif'>⚙️ Configure Precision<br/>BF16 or INT8</span>"]
-        R3["<span style='font-family: Inter, Roboto, sans-serif'>🖼️ Preprocess Image</span>"]
-        R4["<span style='font-family: Inter, Roboto, sans-serif'>▶️ context->execute<br/>Warmup + Timed Loops</span>"]
-        R5["<span style='font-family: Inter, Roboto, sans-serif'>🎯 Postprocess & NMS</span>"]
-        R6["<span style='font-family: Inter, Roboto, sans-serif'>💾 Save output.jpg</span>"]
-        
-        R1 --> R2 --> R3 --> R4 --> R5 --> R6
-    end
-    
-    CPUSubgraph --> CPU
-    RPPSubgraph --> RPP
-    
-    C6 --> End["<span style='font-family: Inter, Roboto, sans-serif'>✅ Complete Inference<br/>Log Latency & FPS</span>"]
-    R6 --> End
-    
-    style Start fill:#4A90E2,stroke:#2E5C8A,color:#fff,font-weight:bold,font-family:Inter
-    style End fill:#50C878,stroke:#2D7A47,color:#fff,font-weight:bold,font-family:Inter
-    style Decision fill:#FFB84D,stroke:#CC8533,color:#000,font-weight:bold,font-family:Inter
-    style CPU fill:#E8F4F8,stroke:#4A90E2,font-family:Inter
-    style RPP fill:#FFF0E8,stroke:#E8844B,font-family:Inter
-    style C1 font-family:Inter
-    style C2 font-family:Inter
-    style C3 font-family:Inter
-    style C4 font-family:Inter
-    style C5 font-family:Inter
-    style C6 font-family:Inter
-    style R1 font-family:Inter
-    style R2 font-family:Inter
-    style R3 font-family:Inter
-    style R4 font-family:Inter
-    style R5 font-family:Inter
-    style R6 font-family:Inter
 ```
 
 ---
