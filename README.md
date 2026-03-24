@@ -382,4 +382,3 @@ Annotated output with bounding boxes and confidence scores saved to `output_0.jp
 
 ---
 
-**End of Documentation**
