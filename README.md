@@ -1,16 +1,22 @@
 # YOLOv8 Demo (RPP + CPU ONNXRuntime)
+![XDL Logo](doc/logo/logo_color_horizontal.png)
 
-This module is a first YOLOv8 demo that runs object detection on one image and writes an output image with bounding boxes and confidence labels.
+A flexible C++ YOLOv8 detection demo for GPU (RPP/OpenRT) and CPU (ONNXRuntime) with dynamic model size support and runtime output shape handling.
 
 ## Runtime Context
 
 - **RPP path (`-d rpp`)**
-  - Uses the RPP/OpenRT inference stack through `infer1::IBuilder`, `INetworkDefinition`, `IBuilderConfig`, and `IExecutionContext`.
-  - Model parsing uses `onnxparser::createParser(...)` and `onnx_parser(...)`.
-  - Inference loop uses `context->execute(...)` with buffers managed by `samplesCommon::RppBufferManager`.
+  - Uses RPP/OpenRT inference stack (`infer1::IBuilder`, `INetworkDefinition`, `IBuilderConfig`, `IExecutionContext`).
+  - Parses ONNX via `onnxparser::createParser(...)` and `onnx_parser(...)`.
+  - Executes model with `context->execute(...)`, manages buffers with `samplesCommon::RppBufferManager`.
+  - Input dims are read from model tensor shape and support non-640x640 sizes (e.g., 1280x1280, 1920x1080).
+  - Output dims are read at runtime, supporting different anchor counts (`8400`, `34000`, etc.).
+
 - **CPU path (`-d cpu`)**
-  - Uses ONNXRuntime C++ API: `Ort::Session`, `Ort::Value::CreateTensor`, `session.Run(...)`.
-  - Postprocess is decoded in C++ and drawn with OpenCV.
+  - Uses ONNXRuntime C++ API (`Ort::Session`, `Ort::Value::CreateTensor`, `session.Run(...)`).
+  - Input dims read from ONNX model shape, with 640x640 fallback for dynamic inputs.
+  - Output dims read at runtime from ONNXRuntime tensor shape.
+
 - **Image and visualization**
   - Input decode: `cv::imread`.
   - Draw boxes and labels: `cv::rectangle`, `cv::putText`.
@@ -145,3 +151,37 @@ CPU inference:
 ```bash
 ./YOLOv8_demo -o ../models/yolov8m.onnx -i ../doc/images/5461697264_b231724778_b.jpg -d cpu
 ```
+
+## Exporting ONNX models
+
+This repository includes `export.py` for exporting Ultralytics YOLOv8 weights to ONNX.
+
+1. Install Python dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+2. Export a model (example):
+
+```bash
+python3 export.py --weights yolov8m.pt --imgsz 640 640 --opset 12 --batch 1  --simplify --output-dir models
+```
+
+3. Use the exported ONNX directly with the demo:
+
+```bash
+./YOLOv8_demo -o ../models/yolov8m.onnx -i ../doc/images/5461697264_b231724778_b.jpg
+```
+
+### export.py options
+
+- `--weights`: local or remote YOLOv8 weights (e.g. `yolov8n.pt`, `yolov8m.pt`)
+- `--imgsz`: single value (square) or two values (`height width`)
+- `--opset`: ONNX opset version (default 12)
+- `--batch`: batch size
+- `--device`: export device (`cpu`, `0`, etc.)
+- `--half`: export FP16 if supported
+- `--dynamic`: enable dynamic input shape
+- `--simplify`: run simplification
+- `--output-dir`: directory to save ONNX model
