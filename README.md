@@ -272,30 +272,30 @@ yolov8m.quant.onnx    → INT8
 ```mermaid
 %%{init: {'theme':'default', 'themeVariables': {'primaryFontFamily': 'Inter, Roboto, -apple-system, system-ui, sans-serif', 'fontSize': '14px', 'fontFamily': 'Inter, Roboto, -apple-system, system-ui, sans-serif', 'primaryColor': '#4A90E2', 'primaryBorderColor': '#2E5C8A', 'primaryTextColor': '#fff', 'successBkgColor': '#50C878', 'successTextColor': '#fff'}, 'flowchart': {'htmlLabels': true}}}%%
 graph TD
-    Start["<b style='font-family: Inter, Roboto, sans-serif; font-size: 15px'>YOLOv8 Demo</b><br/><span style='font-family: Inter, Roboto, sans-serif'>main - Parse CLI Args</span>"] --> Validate["<span style='font-family: Inter, Roboto, sans-serif'>Validate Model & Image<br/>Detect Precision</span>"]
+    Start["<b style='font-family: Inter, Roboto, sans-serif; font-size: 15px'>YOLOv8 Demo</b><br/><span style='font-family: Inter, Roboto, sans-serif'>main - Parse CLI Args</span>"] --> Validate["<span style='font-family: Inter, Roboto, sans-serif'>Validate Model</span>"]
     Validate --> Decision{"-d" Option}
     
     Decision -->|cpu| CPUSubgraph["<span style='font-family: Inter, Roboto, sans-serif'>CPU Backend</span>"]
-    Decision -->|rpp| RPPSubgraph["<span style='font-family: Inter, Roboto, sans-serif'>RPP/GPU Backend</span>"]
+    Decision -->|rpp| RPPSubgraph["<span style='font-family: Inter, Roboto, sans-serif'>RPP Backend</span>"]
     
-    subgraph CPU["<b style='font-family: Inter, Roboto, sans-serif'>━━━ CPU Inference Path ━━━</b>"]
-        C1["<span style='font-family: Inter, Roboto, sans-serif'>📂 Load ONNX<br/>Ort::Session</span>"]
-        C2["<span style='font-family: Inter, Roboto, sans-serif'>📏 Read I/O Shapes</span>"]
-        C3["<span style='font-family: Inter, Roboto, sans-serif'>🖼️ Preprocess</span>"]
-        C4["<span style='font-family: Inter, Roboto, sans-serif'>▶️ session.Run<br/>Warmup + Timed</span>"]
-        C5["<span style='font-family: Inter, Roboto, sans-serif'>🎯 NMS + Draw</span>"]
-        C6["<span style='font-family: Inter, Roboto, sans-serif'>💾 Save Image</span>"]
+    subgraph CPU["<b style='font-family: Inter, Roboto, sans-serif'>━━━ CPU Path ━━━</b>"]
+        C1["<span style='font-family: Inter, Roboto, sans-serif'>📂 Load ONNX Model<br/>Ort::Session</span>"]
+        C2["<span style='font-family: Inter, Roboto, sans-serif'>📏 Read Input/Output Shapes</span>"]
+        C3["<span style='font-family: Inter, Roboto, sans-serif'>🖼️ Preprocess Image</span>"]
+        C4["<span style='font-family: Inter, Roboto, sans-serif'>▶️ session.Run<br/>Warmup + Timed Loops</span>"]
+        C5["<span style='font-family: Inter, Roboto, sans-serif'>🎯 Postprocess & NMS</span>"]
+        C6["<span style='font-family: Inter, Roboto, sans-serif'>💾 Save output.jpg</span>"]
         
         C1 --> C2 --> C3 --> C4 --> C5 --> C6
     end
     
-    subgraph RPP["<b style='font-family: Inter, Roboto, sans-serif'>━━━ RPP/GPU Inference Path ━━━</b>"]
-        R1["<span style='font-family: Inter, Roboto, sans-serif'>🔨 Build Engine<br/>IBuilder</span>"]
-        R2["<span style='font-family: Inter, Roboto, sans-serif'>⚙️ Set Precision<br/>BF16/INT8</span>"]
-        R3["<span style='font-family: Inter, Roboto, sans-serif'>🖼️ Preprocess</span>"]
-        R4["<span style='font-family: Inter, Roboto, sans-serif'>▶️ execute<br/>Warmup + Timed</span>"]
-        R5["<span style='font-family: Inter, Roboto, sans-serif'>🎯 NMS + Draw</span>"]
-        R6["<span style='font-family: Inter, Roboto, sans-serif'>💾 Save Image</span>"]
+    subgraph RPP["<b style='font-family: Inter, Roboto, sans-serif'>━━━ RPP Path ━━━</b>"]
+        R1["<span style='font-family: Inter, Roboto, sans-serif'>🔨 Yolov8s::build<br/>IBuilder + Parse ONNX</span>"]
+        R2["<span style='font-family: Inter, Roboto, sans-serif'>⚙️ Configure Precision<br/>BF16 or INT8</span>"]
+        R3["<span style='font-family: Inter, Roboto, sans-serif'>🖼️ Preprocess Image</span>"]
+        R4["<span style='font-family: Inter, Roboto, sans-serif'>▶️ context->execute<br/>Warmup + Timed Loops</span>"]
+        R5["<span style='font-family: Inter, Roboto, sans-serif'>🎯 Postprocess & NMS</span>"]
+        R6["<span style='font-family: Inter, Roboto, sans-serif'>💾 Save output.jpg</span>"]
         
         R1 --> R2 --> R3 --> R4 --> R5 --> R6
     end
@@ -303,7 +303,7 @@ graph TD
     CPUSubgraph --> CPU
     RPPSubgraph --> RPP
     
-    C6 --> End["<span style='font-family: Inter, Roboto, sans-serif'>✅ Complete<br/>Report FPS & Latency</span>"]
+    C6 --> End["<span style='font-family: Inter, Roboto, sans-serif'>✅ Complete Inference<br/>Log Latency & FPS</span>"]
     R6 --> End
     
     style Start fill:#4A90E2,stroke:#2E5C8A,color:#fff,font-weight:bold,font-family:Inter
@@ -311,6 +311,18 @@ graph TD
     style Decision fill:#FFB84D,stroke:#CC8533,color:#000,font-weight:bold,font-family:Inter
     style CPU fill:#E8F4F8,stroke:#4A90E2,font-family:Inter
     style RPP fill:#FFF0E8,stroke:#E8844B,font-family:Inter
+    style C1 font-family:Inter
+    style C2 font-family:Inter
+    style C3 font-family:Inter
+    style C4 font-family:Inter
+    style C5 font-family:Inter
+    style C6 font-family:Inter
+    style R1 font-family:Inter
+    style R2 font-family:Inter
+    style R3 font-family:Inter
+    style R4 font-family:Inter
+    style R5 font-family:Inter
+    style R6 font-family:Inter
 ```
 
 ---
@@ -365,68 +377,6 @@ Annotated output with bounding boxes and confidence scores saved to `output_0.jp
 - **ONNX Runtime**: Microsoft (MIT)
 - **OpenCV**: OpenCV team (Apache 2.0)
 - **RPP/OpenRT**: Internal framework
-
----
-
-**Last Updated**: 2026年3月24日 | **Status**: Production Ready ✅
-
-## Execution Flow Diagram
-
-```mermaid
-%%{init: {'theme':'default', 'themeVariables': {'primaryFontFamily': 'Inter, Roboto, -apple-system, system-ui, sans-serif', 'fontSize': '14px', 'fontFamily': 'Inter, Roboto, -apple-system, system-ui, sans-serif', 'primaryColor': '#4A90E2', 'primaryBorderColor': '#2E5C8A', 'primaryTextColor': '#fff', 'successBkgColor': '#50C878', 'successTextColor': '#fff'}, 'flowchart': {'htmlLabels': true}}}%%
-graph TD
-    Start["<b style='font-family: Inter, Roboto, sans-serif; font-size: 15px'>YOLOv8 Demo</b><br/><span style='font-family: Inter, Roboto, sans-serif'>main - Parse CLI Args</span>"] --> Validate["<span style='font-family: Inter, Roboto, sans-serif'>Validate Model</span>"]
-    Validate --> Decision{"-d" Option}
-    
-    Decision -->|cpu| CPUSubgraph["<span style='font-family: Inter, Roboto, sans-serif'>CPU Backend</span>"]
-    Decision -->|rpp| RPPSubgraph["<span style='font-family: Inter, Roboto, sans-serif'>RPP Backend</span>"]
-    
-    subgraph CPU["<b style='font-family: Inter, Roboto, sans-serif'>━━━ CPU Path ━━━</b>"]
-        C1["<span style='font-family: Inter, Roboto, sans-serif'>📂 Load ONNX Model<br/>Ort::Session</span>"]
-        C2["<span style='font-family: Inter, Roboto, sans-serif'>📏 Read Input/Output Shapes</span>"]
-        C3["<span style='font-family: Inter, Roboto, sans-serif'>🖼️ Preprocess Image</span>"]
-        C4["<span style='font-family: Inter, Roboto, sans-serif'>▶️ session.Run<br/>Warmup + Timed Loops</span>"]
-        C5["<span style='font-family: Inter, Roboto, sans-serif'>🎯 Postprocess & NMS</span>"]
-        C6["<span style='font-family: Inter, Roboto, sans-serif'>💾 Save output.jpg</span>"]
-        
-        C1 --> C2 --> C3 --> C4 --> C5 --> C6
-    end
-    
-    subgraph RPP["<b style='font-family: Inter, Roboto, sans-serif'>━━━ RPP Path ━━━</b>"]
-        R1["<span style='font-family: Inter, Roboto, sans-serif'>🔨 Yolov8s::build<br/>IBuilder + Parse ONNX</span>"]
-        R2["<span style='font-family: Inter, Roboto, sans-serif'>⚙️ Configure Precision<br/>BF16 or INT8</span>"]
-        R3["<span style='font-family: Inter, Roboto, sans-serif'>🖼️ Preprocess Image</span>"]
-        R4["<span style='font-family: Inter, Roboto, sans-serif'>▶️ context->execute<br/>Warmup + Timed Loops</span>"]
-        R5["<span style='font-family: Inter, Roboto, sans-serif'>🎯 Postprocess & NMS</span>"]
-        R6["<span style='font-family: Inter, Roboto, sans-serif'>💾 Save output.jpg</span>"]
-        
-        R1 --> R2 --> R3 --> R4 --> R5 --> R6
-    end
-    
-    CPUSubgraph --> CPU
-    RPPSubgraph --> RPP
-    
-    C6 --> End["<span style='font-family: Inter, Roboto, sans-serif'>✅ Complete Inference<br/>Log Latency & FPS</span>"]
-    R6 --> End
-    
-    style Start fill:#4A90E2,stroke:#2E5C8A,color:#fff,font-weight:bold,font-family:Inter
-    style End fill:#50C878,stroke:#2D7A47,color:#fff,font-weight:bold,font-family:Inter
-    style Decision fill:#FFB84D,stroke:#CC8533,color:#000,font-weight:bold,font-family:Inter
-    style CPU fill:#E8F4F8,stroke:#4A90E2,font-family:Inter
-    style RPP fill:#FFF0E8,stroke:#E8844B,font-family:Inter
-    style C1 font-family:Inter
-    style C2 font-family:Inter
-    style C3 font-family:Inter
-    style C4 font-family:Inter
-    style C5 font-family:Inter
-    style C6 font-family:Inter
-    style R1 font-family:Inter
-    style R2 font-family:Inter
-    style R3 font-family:Inter
-    style R4 font-family:Inter
-    style R5 font-family:Inter
-    style R6 font-family:Inter
-```
 
 ---
 
