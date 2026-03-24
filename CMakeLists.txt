@@ -19,8 +19,8 @@ find_package(OpenCV REQUIRED COMPONENTS core imgproc imgcodecs)
 set(RppRT_DIR /usr/local/rpp)
 
 add_executable(YOLOv8_demo
-    yolov8.cpp
-    yolo_main.cpp
+    yolo/yolov8.cpp
+    yolo/yolo_main.cpp
     common/infer/infer_sample_base.cpp
     common/calibrator/calibrator.cpp
     common/logger.cpp
