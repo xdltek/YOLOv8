@@ -1,6 +1,11 @@
 /** @file parser_api.h
  *
- * @brief ONNX parser helper used by sample engine build flow.
+ * @brief
+ * @author XDLTek Technologies
+ * COPYRIGHT(c) 2020-2022 XDLTek Technologies.
+ * ALL RIGHTS RESERVED	
+ *
+ * This is Unpublished Proprietary Source Code of XDLTek Technologies
  */
 
 
@@ -18,18 +23,9 @@
 #include "OnnxParser.h"
 #include "logging.h"
 
-/**
- * @brief Read ONNX file into memory and parse it into network definition.
- * @param onnx_filename ONNX model file path.
- * @param builder Runtime builder handle (kept for API compatibility).
- * @param network Target network to fill.
- * @param parser ONNX parser instance.
- * @return 0 on success, negative error code on failure.
- */
 inline int onnx_parser(std::string onnx_filename, infer1::IBuilder *builder,
                 infer1::INetworkDefinition *network, onnxparser::IParser *parser)
 {
-	(void)builder; // Unused in current parser path.
 	std::ifstream onnx_file(onnx_filename.c_str(),
 		std::ios::binary | std::ios::ate);
 	std::streamsize file_size = onnx_file.tellg();

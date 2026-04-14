@@ -1,6 +1,11 @@
 /** @file rpp_buffer_manager.h
  *
- * @brief Host/device buffer manager used by sample inference execution.
+ * @brief IO buffer manager
+ * @author XDLTek Technologies
+ * COPYRIGHT(c) 2020-2022 XDLTek Technologies.
+ * ALL RIGHTS RESERVED
+ *
+ * This is Unpublished Proprietary Source Code of XDLTek Technologies
  */
 
 #ifndef RPPRT_CORE_BUILDER_BUFFER_MANAGER_H_
@@ -319,12 +324,12 @@ namespace samplesCommon {
                 case infer1::DataType::kFLOAT:
                     print<float>(os, buf, bufSize, rowCount);
                     break;
-                    // RISK: half-precision dump path is not implemented in this demo buffer printer.
+                    // TODO: Remove it temporary
                     //case infer1::DataType::kHALF: print<half_float::half>(os, buf, bufSize, rowCount); break;
                 case infer1::DataType::kINT8:
                     throw std::runtime_error( "Int8 network-level input and output is not supported");
 //                    break;
-                    // RISK: bool tensor dump path is not implemented in this demo buffer printer.
+                    // TODO: Remove it temporary
                     //case infer1::DataType::kBOOL: assert(0 && "Bool network-level input and output are not supported"); break;
                 default:
                     break;
@@ -411,7 +416,7 @@ namespace samplesCommon {
             return (isHost ? managed_buffers_[index]->hostBuffer.data() : managed_buffers_[index]->deviceBuffer.data());
         }
 
-        // RISK: force_bf16 is an EB-specific path and relies on byteSize / 2 behavior.
+        // TODO： EB only
         void memcpyBuffers(const bool copyInput, const bool deviceToHost, const bool async, const rtStream_t &stream = 0, bool force_bf16 = false) {
             for (int i = 0; i < engine_->getNbBindings(); i++) {
                 void *dstPtr

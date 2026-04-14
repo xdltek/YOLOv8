@@ -1,11 +1,11 @@
 /** @file logger.cpp
  *
  * @brief
- * @author Azurengine Technologies
- * COPYRIGHT(c) 2020-2022 AzurEngine Technologies.
+ * @author XDLTek
+ * COPYRIGHT(c) 2020-2022 XDLTek.
  * ALL RIGHTS RESERVED
  *
- * This is Unpublished Proprietary Source Code of AzurEngine Technologies
+ * This is Unpublished Proprietary Source Code of XDLTek
  */
 
 #include "logger.h"

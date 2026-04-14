@@ -1,7 +1,3 @@
-/**
- * @file utils.hpp
- * @brief Utility helpers for numeric checks and CLI argument preprocessing.
- */
 #pragma once
 #include <vector>
 #include <iostream>
@@ -120,7 +116,7 @@ inline std::vector<std::string> preprocess_args(int argc, char* argv[]) {
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
 
-        // Handle short argument style with '=' (example: -o=model.onnx).
+        // handle short argument with '='
         if (arg.size() > 2 && arg[0] == '-' && arg[1] != '-' && arg.find('=') != std::string::npos) {
             size_t pos = arg.find('=');
             std::string flag = arg.substr(0, pos);
@@ -139,7 +135,7 @@ inline std::vector<std::string> preprocess_args(int argc, char* argv[]) {
 inline void to_char_argument_vector(const std::vector<std::string>& preprocessed_arguments, char* original_argv[],
                              std::vector<const char*>& fixed_arguments) {
     fixed_arguments.clear();
-    fixed_arguments.push_back(original_argv[0]); // Program name.
+    fixed_arguments.push_back(original_argv[0]); // 程序名
     for (auto& preprocessed_argument : preprocessed_arguments) {
         fixed_arguments.push_back(preprocessed_argument.data());
     }

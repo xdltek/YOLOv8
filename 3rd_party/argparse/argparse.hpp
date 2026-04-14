@@ -1,6 +1,6 @@
 
-#ifndef AZURENGINE_SAMPLES_ARGPARSE_H
-#define AZURENGINE_SAMPLES_ARGPARSE_H
+#ifndef XDLTEK_SAMPLES_ARGPARSE_H
+#define XDLTEK_SAMPLES_ARGPARSE_H
 
 /*
   __ _ _ __ __ _ _ __   __ _ _ __ ___  ___
@@ -2592,4 +2592,4 @@ namespace argparse {
 
 } // namespace argparse
 
-#endif //AZURENGINE_SAMPLES_ARGPARSE_H
+#endif //XDLTEK_SAMPLES_ARGPARSE_H

@@ -1,6 +1,11 @@
 /** @file ErrorRecorder.h
  *
- * @brief Sample implementation of infer1::IErrorRecorder for runtime error collection.
+ * @brief
+ * @author XDLTek Technologies
+ * COPYRIGHT(c) 2020-2022 XDLTek Technologies.
+ * ALL RIGHTS RESERVED
+ *
+ * This is Unpublished Proprietary Source Code of XDLTek Technologies
  */
 
 #ifndef ERROR_RECORDER_H
@@ -16,7 +21,7 @@
 #include "logger.h"
 
 //!
-//! A simple implementation of the IErrorRecorder interface for
+//! A simple imeplementation of the IErrorRecorder interface for
 //! use by samples. This interface also can be used as a reference
 //! implementation.
 //! The sample Error recorder is based on a vector that pairs the error

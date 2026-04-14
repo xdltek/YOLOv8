@@ -1,6 +1,11 @@
 /** @file sampleCommon.h
  *
- * @brief Shared utility helpers for sample runtime, memory, timing, and file handling.
+ * @brief IO buffer manager
+ * @author XDLTek Technologies
+ * COPYRIGHT(c) 2020-2022 XDLTek Technologies.
+ * ALL RIGHTS RESERVED
+ *
+ * This is Unpublished Proprietary Source Code of XDLTek Technologies
  */
 
 #ifndef SAMPLES_COMMON_SAMPLECOMMON_H_

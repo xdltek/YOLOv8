@@ -1,6 +1,11 @@
 /** @file logging.h
  *
- * @brief Logging backend for runtime severity logs and sample test status messages.
+ * @brief
+ * @author XDLTek Technologies
+ * COPYRIGHT(c) 2020-2022 XDLTek Technologies.
+ * ALL RIGHTS RESERVED
+ *
+ * This is Unpublished Proprietary Source Code of XDLTek Technologies
  */
 #ifndef RPPRT_LOGGING_H
 #define RPPRT_LOGGING_H
@@ -206,8 +211,9 @@ namespace sample
     //! In the future, this class could be extended to support dumping test results to a file in some standard format
     //! (for example, JUnit XML), and providing additional metadata (e.g. timing the duration of a test run).
     //!
-    //! TODO: For backwards compatibility with existing samples, this class inherits infer1::ILogger directly.
-    //! This makes it harder to cleanly separate runtime-library messages from sample-application messages.
+    //! TODO: For backwards compatibility with existing samples, this class inherits directly from the infer1::ILogger interface,
+    //! which is problematic since there isn't a clean separation between messages coming from the TensorRT library and messages coming
+    //! from the sample.c
     //!
     //! In the future (once all samples are updated to use Logger::getTRTLogger() to access the ILogger) we can refactor the class
     //! to eliminate the inheritance and instead make the infer1::ILogger implementation a member of the Logger object.
