@@ -1,6 +1,6 @@
 /** @file ErrorRecorder.h
  *
- * @brief
+ * @brief Sample IErrorRecorder implementation shared by OpenRT helpers.
  * @author XDLTek Technologies
  * COPYRIGHT(c) 2020-2022 XDLTek Technologies.
  * ALL RIGHTS RESERVED
@@ -21,7 +21,7 @@
 #include "logger.h"
 
 //!
-//! A simple imeplementation of the IErrorRecorder interface for
+//! A simple implementation of the IErrorRecorder interface for
 //! use by samples. This interface also can be used as a reference
 //! implementation.
 //! The sample Error recorder is based on a vector that pairs the error
@@ -40,14 +40,20 @@ class SampleErrorRecorder : public infer1::IErrorRecorder
         SampleErrorRecorder() = default;
 
         virtual ~SampleErrorRecorder() noexcept {}
+
+        //! Return the number of stored errors.
         int32_t getNbErrors() const noexcept final
         {
             return mErrorStack.size();
         }
+
+        //! Return the error code for a stored error index.
     infer1::ErrorCode getErrorCode(int32_t errorIdx) const noexcept final
         {
             return indexCheck(errorIdx) ? infer1::ErrorCode::kINVALID_ARGUMENT : (*this)[errorIdx].first;
         };
+
+        //! Return the error description for a stored error index.
         IErrorRecorder::ErrorDesc getErrorDesc(int32_t errorIdx) const noexcept final
         {
             return indexCheck(errorIdx) ? "errorIdx out of range." : (*this)[errorIdx].second.c_str();
@@ -61,7 +67,7 @@ class SampleErrorRecorder : public infer1::IErrorRecorder
         // Empty the errorStack.
         void clear() noexcept final
         {
-            try 
+            try
             {
                 // grab a lock so that there is no addition while clearing.
                 std::lock_guard<std::mutex> guard(mStackLock);
@@ -73,12 +79,13 @@ class SampleErrorRecorder : public infer1::IErrorRecorder
             }
         };
 
-        //! Simple helper function that 
+        //! Return whether no errors have been recorded.
         bool empty() const noexcept
         {
             return mErrorStack.empty();
         }
 
+        //! Store one OpenRT-style error entry.
         bool reportError(infer1::ErrorCode val, IErrorRecorder::ErrorDesc desc) noexcept final {
             try
             {

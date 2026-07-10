@@ -1,14 +1,14 @@
 /** @file logging.h
  *
- * @brief
+ * @brief Stream-style logging helpers shared by OpenRT samples.
  * @author XDLTek Technologies
  * COPYRIGHT(c) 2020-2022 XDLTek Technologies.
  * ALL RIGHTS RESERVED
  *
  * This is Unpublished Proprietary Source Code of XDLTek Technologies
  */
-#ifndef RPPRT_LOGGING_H
-#define RPPRT_LOGGING_H
+#ifndef OPENRT_LOGGING_H
+#define OPENRT_LOGGING_H
 
 #include <ctime>
 #include <iostream>
@@ -24,12 +24,19 @@ namespace sample
 {
     using Severity = infer1::ILogger::Severity;
 
+    //! Return the current optional log file path.
     const std::string& get_log_file_path();
+
+    //! Set the current optional log file path used by stream loggers.
     void set_log_file_path_111(const std::string& path);
 
     class Logger;
     extern Logger gLogger;
 
+    //!
+    //! \class LogStreamConsumerBuffer
+    //! \brief Stream buffer that prefixes and flushes severity-tagged log messages.
+    //!
     class LogStreamConsumerBuffer : public std::stringbuf
     {
     public:
@@ -57,15 +64,14 @@ namespace sample
             }
         }
 
-        // synchronizes the stream buffer and returns 0 on success
-        // synchronizing the stream buffer consists of inserting the buffer contents into the stream,
-        // resetting the buffer and flushing the stream
+        //! Synchronize the stream buffer, flush pending text, and return 0 on success.
         virtual int sync()
         {
             putOutput();
             return 0;
         }
 
+        //! Add timestamp/severity text and write the buffered message to console/file output.
         void putOutput()
         {
             if (mShouldLog)
@@ -83,7 +89,7 @@ namespace sample
                 mOutput << std::setw(2) << std::setfill('0') << tm_local->tm_min << ":";
                 mOutput << std::setw(2) << std::setfill('0') << tm_local->tm_sec << "] ";
                 // std::stringbuf::str() gets the string contents of the buffer
-                // insert the buffer contents pre-appended by the appropriate prefix into the stream
+                // insert the buffer contents prepended by the appropriate prefix into the stream
                 mOutput << mPrefix << log_text;
 
                 const std::string& log_file = get_log_file_path();
@@ -554,4 +560,4 @@ namespace sample
 
     } // anonymous namespace
 }
-#endif // RPPRT_LOGGING_H
+#endif // OPENRT_LOGGING_H

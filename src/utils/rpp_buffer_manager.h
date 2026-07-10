@@ -8,8 +8,8 @@
  * This is Unpublished Proprietary Source Code of XDLTek Technologies
  */
 
-#ifndef RPPRT_CORE_BUILDER_BUFFER_MANAGER_H_
-#define RPPRT_CORE_BUILDER_BUFFER_MANAGER_H_
+#ifndef OPENRT_CORE_BUILDER_BUFFER_MANAGER_H_
+#define OPENRT_CORE_BUILDER_BUFFER_MANAGER_H_
 
 #include <new>
 #include <memory>
@@ -451,4 +451,4 @@ namespace samplesCommon {
         std::vector<void *> device_bindings_;                          //!< The vector of device buffers needed for engine execution
     };
 }
-#endif // RPPRT_CORE_BUILDER_BUFFER_MANAGER_H_
+#endif // OPENRT_CORE_BUILDER_BUFFER_MANAGER_H_

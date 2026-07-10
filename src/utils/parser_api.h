@@ -1,6 +1,6 @@
 /** @file parser_api.h
  *
- * @brief
+ * @brief Helper for loading and parsing ONNX model files into an OpenRT network.
  * @author XDLTek Technologies
  * COPYRIGHT(c) 2020-2022 XDLTek Technologies.
  * ALL RIGHTS RESERVED	
@@ -9,8 +9,8 @@
  */
 
 
-#ifndef RPPRT_PARSER_API_H
-#define RPPRT_PARSER_API_H
+#ifndef OPENRT_PARSER_API_H
+#define OPENRT_PARSER_API_H
 
 #include <fstream>
 #include <getopt.h>
@@ -23,6 +23,11 @@
 #include "OnnxParser.h"
 #include "logging.h"
 
+/**
+ * @brief Read an ONNX file from disk and feed it to the provided parser.
+ *
+ * @return 0 on success, or a negative error code when the file or parser fails.
+ */
 inline int onnx_parser(std::string onnx_filename, infer1::IBuilder *builder,
                 infer1::INetworkDefinition *network, onnxparser::IParser *parser)
 {
@@ -55,4 +60,4 @@ inline int onnx_parser(std::string onnx_filename, infer1::IBuilder *builder,
 	return 0;
 }
 
-#endif // RPPRT_PARSER_API_H
+#endif // OPENRT_PARSER_API_H

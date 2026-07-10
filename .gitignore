@@ -1,4 +1,74 @@
+# Local editor and agent state
+.agent/
+.agents/
 .cache/
+.codex/
 .cursor/
+.idea/
+.vscode/
+
+# Build directories and generated outputs
 build/
+cmake-build-*/
+internal_docs/
+out/
+report/
+results/
+output/
+trace/
+
+# CMake / Make / Ninja generated files
+CMakeCache.txt
+CMakeFiles/
+CTestTestfile.cmake
+Testing/
+cmake_install.cmake
+compile_commands.json
+Makefile
+build.ninja
+.ninja_deps
+.ninja_log
+install_manifest.txt
+
+# Compiler and linker artifacts
+*.a
+*.d
+*.dwo
+*.dll
+*.dylib
+*.exe
+*.gcda
+*.gcno
+*.gcov
+*.i
+*.ii
+*.la
+*.lo
+*.o
+*.obj
+*.pdb
+*.profdata
+*.profraw
+*.s
+*.so
+*.so.*
+
+# Runtime logs and local model assets
+*.log
 onnx/
+weights/*
+!weights/.gitkeep
+*.onnx
+*.engine
+*.rpp
+
+# Generated images, except checked-in sample assets
+*.jpg
+!assets/test.jpg
+!assets/ultralytics_*.jpg
+
+# OS/editor temporary files
+*.swp
+*.swo
+*~
+.DS_Store

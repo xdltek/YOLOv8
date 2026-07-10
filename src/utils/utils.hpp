@@ -1,8 +1,14 @@
+/** @file utils.hpp
+ *
+ * @brief Small precision, casting, and command-line helpers shared by demos.
+ */
 #pragma once
 #include <vector>
 #include <iostream>
 #include <math.h>
 #include <numeric>
+
+//! Return the relative error at the position with maximum absolute difference.
 template<class T>
 float ErrMaxMse(std::vector<T> ort, std::vector<T> rt)
 {
@@ -27,6 +33,7 @@ float ErrMaxMse(std::vector<T> ort, std::vector<T> rt)
     return err_max_relative_error;
 }
 
+//! Compute the standard deviation of a numeric vector.
 template<class T>
 float CalcSTD(std::vector<T> data)
 {
@@ -40,6 +47,7 @@ float CalcSTD(std::vector<T> data)
     return std::sqrt(variance / data.size());
 }
 
+//! Compute simple precision metrics for reference and runtime output vectors.
 template<typename T>
 std::vector<float> PrecisionCheck(std::vector<T>& ort, std::vector<T>& rt)
 {
@@ -93,6 +101,7 @@ std::vector<float> PrecisionCheck(std::vector<T>& ort, std::vector<T>& rt)
 //    return name_2_type;
 //}
 
+//! Cast a vector into another scalar type while preserving element count.
 template <class T1, class T2>
 void castData(std::vector<T1> &in, std::vector<T2> &out){
     int length = in.size();
@@ -101,6 +110,7 @@ void castData(std::vector<T1> &in, std::vector<T2> &out){
         out[i] = (T2)in[i];
 }
 
+//! Expand a leading '~' to the current HOME directory.
 inline std::string expand_user_path(const std::string& path) {
     if (!path.empty() && path[0] == '~') {
         const char* home = std::getenv("HOME");
@@ -111,6 +121,7 @@ inline std::string expand_user_path(const std::string& path) {
     return path;
 }
 
+//! Split short options written as "-x=value" into "-x" and "value".
 inline std::vector<std::string> preprocess_args(int argc, char* argv[]) {
     std::vector<std::string> args;
     for (int i = 1; i < argc; ++i) {
@@ -132,10 +143,11 @@ inline std::vector<std::string> preprocess_args(int argc, char* argv[]) {
 }
 
 
+//! Build a getopt-compatible argv view from preprocessed argument strings.
 inline void to_char_argument_vector(const std::vector<std::string>& preprocessed_arguments, char* original_argv[],
                              std::vector<const char*>& fixed_arguments) {
     fixed_arguments.clear();
-    fixed_arguments.push_back(original_argv[0]); // 程序名
+    fixed_arguments.push_back(original_argv[0]); // Program name.
     for (auto& preprocessed_argument : preprocessed_arguments) {
         fixed_arguments.push_back(preprocessed_argument.data());
     }
