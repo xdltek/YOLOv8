@@ -50,7 +50,7 @@ These measurements describe the local RPP validation environment and require hum
 - Moved the sample RGB image to `assets/test.jpg`.
 - Updated CMake to build `rpp_inference` and use the V2.0 directory layout.
 - Decoupled building from model availability: `scripts/build.sh` no longer downloads or verifies ONNX files.
-- Updated run and benchmark workflows to always require an external ONNX path through `-m/--model`; the release has no repository-local model fallback.
+- Updated run and benchmark workflows to accept an external ONNX path through `-m/--model`, with an optional user-provided `weights/yolov8s.onnx` fallback matching YOLOv5 behavior; the release itself still contains no model.
 - Updated demo binary options to match the YOLOv5 convention: required `-m/--model`, `-i/--input`, `-o/--output`, and configurable loop count.
 - Damaged, incomplete, stale, or unchecked engine caches now fall back to rebuilding from ONNX instead of being reused.
 - Updated public documentation to use `ReleaseNote.md`, OpenRT naming, and current YOLOv8 module names consistently.
@@ -115,7 +115,7 @@ These measurements describe the local RPP validation environment and require hum
 - RGB 示例图片移动到 `assets/test.jpg`。
 - CMake 更新为构建 `rpp_inference` 并使用 V2.0 目录布局。
 - 编译流程与模型可用性解耦：`scripts/build.sh` 不再下载或校验 ONNX 文件。
-- 运行和 benchmark 流程更新为：始终必须通过 `-m/--model` 指定外部 ONNX 路径；发布包不存在仓库内模型 fallback。
+- 运行和 benchmark 流程支持通过 `-m/--model` 指定外部 ONNX 路径，并与 YOLOv5 一致地支持用户自行放置的 `weights/yolov8s.onnx` fallback；发布包本身仍不包含模型。
 - demo 二进制参数与 YOLOv5 约定对齐：必须提供 `-m/--model`，输入使用 `-i/--input`，输出使用 `-o/--output`，并支持配置 loop 次数。
 - engine 缓存损坏、不完整、过期或缺少校验时，自动回退到 ONNX 重建，不再尝试复用。
 - 公开文档统一使用 `ReleaseNote.md`、OpenRT 命名和当前 YOLOv8 模块名称。

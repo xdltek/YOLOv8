@@ -49,7 +49,7 @@ Run a measured benchmark for the RGB demo:
 scripts/benchmark.sh --model /path/to/model.onnx --demo rgb --loop 20
 ```
 
-The repository does not ship an ONNX model. Pass an external model explicitly; the default input image is `build/assets/test.jpg`, and the default output path is `build/output/output_rgb.jpg`.
+The repository does not ship an ONNX model. Pass one explicitly, or place the optional local fallback at `weights/yolov8s.onnx`. The default input image is `build/assets/test.jpg`, and the default output path is `build/output/output_rgb.jpg`.
 
 To use another image through the script:
 
@@ -186,7 +186,7 @@ scripts/run.sh --model /path/to/model.onnx --demo rgb
 scripts/benchmark.sh --model /path/to/model.onnx --demo rgb --loop 20
 ```
 
-仓库不随附 ONNX 模型，运行时必须显式传入外部模型。默认输入图片为 `build/assets/test.jpg`，默认输出路径为 `build/output/output_rgb.jpg`。
+仓库不随附 ONNX 模型。可以显式传入外部模型，或自行把可选 fallback 放到 `weights/yolov8s.onnx`。默认输入图片为 `build/assets/test.jpg`，默认输出路径为 `build/output/output_rgb.jpg`。
 
 通过脚本使用其他图片：
 

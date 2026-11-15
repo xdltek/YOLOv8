@@ -50,7 +50,7 @@ Run a measured benchmark for the YUV demo:
 scripts/benchmark.sh --model /path/to/model.onnx --demo yuv --loop 20
 ```
 
-The repository does not ship an ONNX model. Pass an external model explicitly; the default I420 input is `build/assets/test_0.yuv`, its default frame size is `1280x720`, and the default output is `build/output/output_yuv.jpg`.
+The repository does not ship an ONNX model. Pass one explicitly, or place the optional local fallback at `weights/yolov8s.onnx`. The default I420 input is `build/assets/test_0.yuv`, its default frame size is `1280x720`, and the default output is `build/output/output_yuv.jpg`.
 
 To use another I420 frame through the script:
 
@@ -199,7 +199,7 @@ scripts/run.sh --model /path/to/model.onnx --demo yuv
 scripts/benchmark.sh --model /path/to/model.onnx --demo yuv --loop 20
 ```
 
-仓库不随附 ONNX 模型，运行时必须显式传入外部模型。默认 I420 输入为 `build/assets/test_0.yuv`，默认帧尺寸为 `1280x720`，默认输出为 `build/output/output_yuv.jpg`。
+仓库不随附 ONNX 模型。可以显式传入外部模型，或自行把可选 fallback 放到 `weights/yolov8s.onnx`。默认 I420 输入为 `build/assets/test_0.yuv`，默认帧尺寸为 `1280x720`，默认输出为 `build/output/output_yuv.jpg`。
 
 通过脚本使用其他 I420 输入帧：
 

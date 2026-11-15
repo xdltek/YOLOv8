@@ -55,7 +55,7 @@ scripts/run.sh --model /path/to/model.onnx --demo yuv
 scripts/benchmark.sh --model /path/to/model.onnx
 ```
 
-`scripts/run.sh` resolves paths from the repository root and runs `rgb` and `yuv` serially unless one workload is selected. The model path is always required through `-m/--model`; no repository-local fallback is assumed. Reference inputs come from `build/assets`, and rendered images are written to `build/output`. If `/usr/local/rpp/bin/rpp_server` exists, the script ensures it is running before launch and writes its log to `build/logs/rpp_server.log`.
+`scripts/run.sh` resolves paths from the repository root and runs `rgb` and `yuv` serially unless one workload is selected. Pass the model through `-m/--model`; when that option is omitted, the script uses `weights/yolov8s.onnx` only if the user has placed that local file there. Reference inputs come from `build/assets`, and rendered images are written to `build/output`. If `/usr/local/rpp/bin/rpp_server` exists, the script ensures it is running before launch and writes its log to `build/logs/rpp_server.log`.
 
 `scripts/benchmark.sh` saves the full console log to `build/logs/benchmark_<demo>_<timestamp>.log`.
 
@@ -90,7 +90,7 @@ Linked paths in this section can be clicked to jump to their detailed README.
 - `3rd_party/`
   `argparse` header-only library used by demo main files for CLI parsing.
 
-This repository does not include or track ONNX model files in Git. Building is independent of model availability and never downloads or verifies a model. At runtime, always pass an external model path with `-m/--model`; omitting it is an error. Class names for overlays use the embedded MS COCO 80-class list in `src/yolov8/labels.cpp` (`coco80_class_labels()`); classes beyond that table are displayed as `class_<id>`.
+This repository does not include or track ONNX model files in Git. Building is independent of model availability and never downloads or verifies a model. Normally pass an external model path with `-m/--model`; for YOLOv5-compatible convenience, the scripts use a user-provided `weights/yolov8s.onnx` when `--model` is omitted. Class names for overlays use the embedded MS COCO 80-class list in `src/yolov8/labels.cpp` (`coco80_class_labels()`); classes beyond that table are displayed as `class_<id>`.
 
 ## Demo Guides
 
@@ -150,7 +150,7 @@ build/logs/     script and benchmark logs
 
 ## How to Run
 
-Run demos from the repository root after building the project. The release package does not contain an ONNX model, so `-m/--model` is required.
+Run demos from the repository root after building the project. The release package does not contain an ONNX model. Use `-m/--model`, or locally place the optional fallback at `weights/yolov8s.onnx`.
 
 ```shell
 scripts/run.sh --model /path/to/model.onnx
@@ -486,7 +486,7 @@ scripts/run.sh --model /path/to/model.onnx --demo yuv
 scripts/benchmark.sh --model /path/to/model.onnx
 ```
 
-`scripts/run.sh` 会从仓库根目录解析路径；未显式选择 workload 时会串行运行 `rgb` 和 `yuv`。每次运行都必须通过 `-m/--model` 指定外部模型路径，不假设仓库内存在 fallback 模型。参考输入从 `build/assets` 读取，绘制结果写入 `build/output`。如果存在 `/usr/local/rpp/bin/rpp_server`，脚本会在启动前确保服务运行，并把日志写入 `build/logs/rpp_server.log`。
+`scripts/run.sh` 会从仓库根目录解析路径；未显式选择 workload 时会串行运行 `rgb` 和 `yuv`。通常通过 `-m/--model` 指定模型；省略该参数时，仅当用户已自行放置 `weights/yolov8s.onnx`，脚本才使用该本地 fallback。参考输入从 `build/assets` 读取，绘制结果写入 `build/output`。如果存在 `/usr/local/rpp/bin/rpp_server`，脚本会在启动前确保服务运行，并把日志写入 `build/logs/rpp_server.log`。
 
 `scripts/benchmark.sh` 会把完整控制台日志保存到 `build/logs/benchmark_<demo>_<timestamp>.log`。
 
@@ -521,7 +521,7 @@ scripts/benchmark.sh --model /path/to/model.onnx
 - `3rd_party/`
   demo main 使用的 `argparse` header-only 库。
 
-本仓库不包含 ONNX 模型文件，也不在 Git 中跟踪此类文件。编译过程与模型是否存在无关，不会下载或校验模型。运行时必须通过 `-m/--model` 指定外部模型路径；省略该参数会直接报错。可视化使用 `src/yolov8/labels.cpp` 中内置的 MS COCO 80 类列表；超出该列表的类别显示为 `class_<id>`。
+本仓库不包含 ONNX 模型文件，也不在 Git 中跟踪此类文件。编译过程与模型是否存在无关，不会下载或校验模型。通常通过 `-m/--model` 指定外部模型；为与 YOLOv5 使用方式一致，省略该参数时脚本会尝试使用用户自行放置的 `weights/yolov8s.onnx`。可视化使用 `src/yolov8/labels.cpp` 中内置的 MS COCO 80 类列表；超出该列表的类别显示为 `class_<id>`。
 
 ## Demo 指南
 
@@ -581,7 +581,7 @@ build/logs/     脚本和 benchmark 日志
 
 ## 如何运行
 
-构建完成后，从仓库根目录运行 demo。发布包不包含 ONNX 模型，因此必须通过 `-m/--model` 指定模型。
+构建完成后，从仓库根目录运行 demo。发布包不包含 ONNX 模型；可以使用 `-m/--model`，或自行把可选 fallback 放到 `weights/yolov8s.onnx`。
 
 ```shell
 scripts/run.sh --model /path/to/model.onnx

@@ -17,14 +17,14 @@ show_help() {
 Usage: scripts/run.sh [options]
 
 Options:
-  -m, --model PATH      ONNX model path. Required.
+  -m, --model PATH      ONNX model path. Required unless weights/yolov8s.onnx exists.
   -d, --demo NAME       Workload selector: all, rgb, or yuv. Default: all
   -i, --input PATH      RGB image path or I420 YUV path.
   -o, --output PATH     Rendered output path.
   -b, --build-dir DIR   Build directory. Default: build
   -l, --loop COUNT      Measured loop count. Default: 1
-      --yuv-width N     I420 width for yuv demo. Default: 1280
-      --yuv-height N    I420 height for yuv demo. Default: 720
+      --yuv-width N     I420 width for the YUV workload. Default: 1280
+      --yuv-height N    I420 height for the YUV workload. Default: 720
   -h, --help            Show this help message.
 EOF
 }
@@ -181,10 +181,16 @@ if [[ ! "${loop_count}" =~ ^[1-9][0-9]*$ ]]; then
 fi
 
 if [[ -z "${model}" ]]; then
-    echo "${RED}[ERROR   ]${RESET} No ONNX model was specified." >&2
-    echo "${CYAN}[DETAIL  ]${RESET} This repository does not include a model." >&2
-    echo "${CYAN}[ACTION  ]${RESET} Provide one with: scripts/run.sh --model /path/to/model.onnx" >&2
-    exit 1
+    default_model="${ROOT_DIR}/weights/yolov8s.onnx"
+    if [[ -f "${default_model}" ]]; then
+        model="${default_model}"
+        echo "${GREEN}[MODEL   ]${RESET} --model not specified; using default: ${model}"
+    else
+        echo "${RED}[ERROR   ]${RESET} No ONNX model was specified." >&2
+        echo "${CYAN}[DETAIL  ]${RESET} This package does not include a model, and the optional fallback was not found: ${default_model}" >&2
+        echo "${CYAN}[ACTION  ]${RESET} Provide one with: scripts/run.sh --model /path/to/model.onnx" >&2
+        exit 1
+    fi
 fi
 
 model="$(resolve_repo_path "${model}")"

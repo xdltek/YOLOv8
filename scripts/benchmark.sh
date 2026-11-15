@@ -15,14 +15,14 @@ show_help() {
 Usage: scripts/benchmark.sh [options]
 
 Options:
-  -m, --model PATH      ONNX model path. Required.
+  -m, --model PATH      ONNX model path. Required unless weights/yolov8s.onnx exists.
   -d, --demo NAME       Workload selector: all, rgb, or yuv. Default: all
   -i, --input PATH      RGB image path or I420 YUV path.
   -o, --output PATH     Rendered output path.
   -b, --build-dir DIR   Build directory. Default: build
   -l, --loop COUNT      Measured loop count. Default: 20
-      --yuv-width N     I420 width for yuv demo. Default: 1280
-      --yuv-height N    I420 height for yuv demo. Default: 720
+      --yuv-width N     I420 width for the YUV workload. Default: 1280
+      --yuv-height N    I420 height for the YUV workload. Default: 720
   -h, --help            Show this help message.
 
 Logs are saved to <build-dir>/logs/benchmark_<workload>_<timestamp>.log.
@@ -99,9 +99,9 @@ if [[ "${demo}" == "all" && ( -n "${input}" || -n "${output}" ) ]]; then
     exit 1
 fi
 
-if [[ -z "${model}" ]]; then
+if [[ -z "${model}" && ! -f "${ROOT_DIR}/weights/yolov8s.onnx" ]]; then
     echo "${RED}[ERROR   ]${RESET} No ONNX model was specified." >&2
-    echo "${CYAN}[DETAIL  ]${RESET} This repository does not include a model." >&2
+    echo "${CYAN}[DETAIL  ]${RESET} This package does not include a model, and the optional fallback was not found: ${ROOT_DIR}/weights/yolov8s.onnx" >&2
     echo "${CYAN}[ACTION  ]${RESET} Provide one with: scripts/benchmark.sh --model /path/to/model.onnx" >&2
     exit 1
 fi
