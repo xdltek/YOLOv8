@@ -75,6 +75,7 @@ private:
      */
     bool executeContext();
 
+    std::unique_ptr<infer1::IRuntime> runtime_ptr_ {nullptr};
     std::shared_ptr<infer1::IEngine> engine_ptr_ {nullptr};
     std::shared_ptr<samplesCommon::RppBufferManager> buffer_ptr_ {nullptr};
     std::unique_ptr<infer1::IExecutionContext> context_ptr_ {nullptr};

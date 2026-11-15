@@ -3,6 +3,7 @@
  * @brief YOLOv8 RGB/BGR image demo.
  */
 #include "argparse/argparse.hpp"
+#include "demo_reporter.h"
 #include "labels.h"
 #include "logger.h"
 #include "perf_trace_session.h"
@@ -28,44 +29,6 @@ constexpr bool kPerfTraceEnabled = true;
 constexpr bool kPerfTraceEnabled = false;
 #endif
 constexpr const char* kPerfTraceDir = "../trace";
-
-/**
- * @brief Convert byte counts to KiB for the latency summary.
- * @param bytes Number of bytes transferred.
- */
-double bytes_to_kib(size_t bytes)
-{
-    return static_cast<double>(bytes) / 1024.0;
-}
-
-/**
- * @brief Print the measured full-pipeline timing summary after warmup.
- * @param times Averaged stage timings collected from measured loops.
- * @param loop_count Number of measured loops included in the average.
- * @param output_path Path where the rendered detection image was saved.
- */
-void print_summary(const YoloV8StageTimes& times, int loop_count, const std::string& output_path)
-{
-    // FPS is derived from the end-to-end latency measured after warmup.
-    double fps = times.end_to_end_ms > 0.0 ? 1000.0 / times.end_to_end_ms : 0.0;
-    std::cout << std::fixed << std::setprecision(3)
-              << "\nSummary:\n"
-              << "Loop count: " << loop_count << "\n"
-              << "Loop time: average per measured loop after warmup\n"
-              << "Input H2D: " << times.input_h2d_ms << " ms, "
-              << times.input_h2d_bytes << " bytes, "
-              << bytes_to_kib(times.input_h2d_bytes) << " KiB\n"
-              << "Preprocess: " << times.preprocess_ms << " ms\n"
-              << "Inference: " << times.inference_ms << " ms\n"
-              << "Postprocess: " << times.postprocess_ms << " ms\n"
-              << "Output D2H: " << times.output_d2h_ms << " ms, "
-              << times.output_d2h_bytes << " bytes, "
-              << bytes_to_kib(times.output_d2h_bytes) << " KiB\n"
-              << "All time end to end: " << times.end_to_end_ms
-              << " ms (preprocess+inference+postprocess)\n"
-              << "FPS: " << fps << "\n"
-              << "Output path: " << output_path << std::endl;
-}
 
 /**
  * @brief Average accumulated stage timings across measured loops.
@@ -99,15 +62,15 @@ YoloV8StageTimes average_times(const YoloV8StageTimes& total, int count)
 int main(int argc, char** argv)
 {
     // Step 1: declare the command-line contract for this demo.
-    argparse::ArgumentParser program("yolov8 rgb image demo", "0.1", argparse::default_arguments::help);
+    argparse::ArgumentParser program("YOLOv8 RGB image application", "2.0", argparse::default_arguments::help);
 
-    program.add_argument("-o", "--onnx")
-            .default_value(std::string("../../weights/yolov8s.onnx"))
-            .help("path to the YOLOv8 ONNX model file.");
-    program.add_argument("-i", "--image")
+    program.add_argument("-m", "--model")
+            .required()
+            .help("path to the YOLOv8 ONNX model file (required).");
+    program.add_argument("-i", "--input")
             .default_value(std::string("../assets/test.jpg"))
             .help("path of RGB/BGR image file.");
-    program.add_argument("--output")
+    program.add_argument("-o", "--output")
             .default_value(std::string("../output/output_rgb.jpg"))
             .help("path of visualization output image.");
     program.add_argument("-l", "--loop")
@@ -133,8 +96,8 @@ int main(int argc, char** argv)
     }
 
     // Step 3: read parsed options and expand user-friendly paths such as ~/model.onnx.
-    std::string model_path = expand_user_path(program.get<std::string>("--onnx"));
-    std::string image_path = expand_user_path(program.get<std::string>("--image"));
+    std::string model_path = expand_user_path(program.get<std::string>("--model"));
+    std::string image_path = expand_user_path(program.get<std::string>("--input"));
     std::string output_path = expand_user_path(program.get<std::string>("--output"));
     int repeat_count = program.get<int>("--loop");
     if (repeat_count <= 0) {
@@ -157,8 +120,7 @@ int main(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
-    std::cout << "Model path: " << model_path << "\n"
-              << "Inference image path: " << image_path << std::endl;
+    demo_reporter::print_stage("LOAD", "Decoding RGB/BGR input image");
 
     // OpenCV decodes the host image; RPP preprocessing consumes the resulting BGR buffer.
     cv::Mat frame = cv::imread(image_path);
@@ -179,12 +141,14 @@ int main(int argc, char** argv)
 
     YoloV8Pipeline pipeline;
     const std::vector<std::string>& class_list = coco80_class_labels();
+    demo_reporter::print_stage("INIT", "Loading or building OpenRT inference engine on RPP accelerator");
     if (!pipeline.init(pipeline_options, class_list)) {
         return EXIT_FAILURE;
     }
 
     // Run one complete pass before measurement so printed latency reflects warmed execution.
     std::vector<Detection> warmup_output;
+    demo_reporter::print_stage("WARMUP", "Running 1 unmeasured frame for stable performance");
     {
         PERF_SCOPE_CATE("demo_warmup_run", "yolov8");
         if (!pipeline.runRgb(frame, warmup_output, nullptr)) {
@@ -195,6 +159,8 @@ int main(int argc, char** argv)
     // Step 8: run the measured loop and accumulate stage timings for a stable average.
     std::vector<Detection> output;
     YoloV8StageTimes total_times;
+    demo_reporter::print_stage("BENCH", "Measuring " + std::to_string(repeat_count) + " full-pipeline frames");
+    auto progress_start = demo_reporter::Clock::now();
     for (int i = 0; i < repeat_count; ++i) {
         PERF_SCOPE_CATE("demo_measured_loop", "yolov8");
         YoloV8StageTimes loop_times;
@@ -209,6 +175,7 @@ int main(int argc, char** argv)
         total_times.inference_ms += loop_times.inference_ms;
         total_times.postprocess_ms += loop_times.postprocess_ms;
         total_times.end_to_end_ms += loop_times.end_to_end_ms;
+        demo_reporter::print_progress(i + 1, repeat_count, progress_start);
     }
 
     // Step 9: render the last measured detections onto the original host image.
@@ -218,6 +185,6 @@ int main(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
-    print_summary(average_times(total_times, repeat_count), repeat_count, output_path);
+    demo_reporter::print_summary(average_times(total_times, repeat_count), repeat_count, output.size(), output_path);
     return EXIT_SUCCESS;
 }

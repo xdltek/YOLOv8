@@ -10,6 +10,7 @@
 #ifndef OPENRT_LOGGING_H
 #define OPENRT_LOGGING_H
 
+#include <atomic>
 #include <ctime>
 #include <iostream>
 #include <iomanip>
@@ -264,7 +265,20 @@ namespace sample
         //!
         void log(Severity severity, const char* msg) override
         {
+            if (severity == Severity::kERROR || severity == Severity::kINTERNAL_ERROR) {
+                mRuntimeErrorCount.fetch_add(1, std::memory_order_relaxed);
+            }
             LogStreamConsumer(mReportableSeverity, severity) << "[OpenRT] " << std::string(msg) << std::endl;
+        }
+
+        void clearRuntimeErrorCount()
+        {
+            mRuntimeErrorCount.store(0, std::memory_order_relaxed);
+        }
+
+        std::size_t getRuntimeErrorCount() const
+        {
+            return mRuntimeErrorCount.load(std::memory_order_relaxed);
         }
 
         //!
@@ -457,6 +471,7 @@ namespace sample
         }
 
         Severity mReportableSeverity;
+        std::atomic<std::size_t> mRuntimeErrorCount {0};
     };
 
     namespace

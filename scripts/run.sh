@@ -6,6 +6,12 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 RPP_SERVER_BIN="/usr/local/rpp/bin/rpp_server"
 
+if [[ "${YOLO_COLOR:-always}" != "never" ]]; then
+    BLUE=$'\033[1;34m'; CYAN=$'\033[1;36m'; GREEN=$'\033[1;32m'; RED=$'\033[1;31m'; RESET=$'\033[0m'
+else
+    BLUE=""; CYAN=""; GREEN=""; RED=""; RESET=""
+fi
+
 show_help() {
     cat <<'EOF'
 Usage: scripts/run.sh [options]
@@ -26,9 +32,9 @@ EOF
 resolve_repo_path() {
     local path="$1"
     if [[ "${path}" == /* ]]; then
-        printf '%s\n' "${path}"
+        readlink -m "${path}"
     else
-        printf '%s\n' "${ROOT_DIR}/${path}"
+        readlink -m "${ROOT_DIR}/${path}"
     fi
 }
 
@@ -72,8 +78,8 @@ run_demo() {
             [[ -z "${selected_output}" ]] && selected_output="${build_dir}/output/output_rgb.jpg"
             selected_input="$(resolve_repo_path "${selected_input}")"
             selected_output="$(resolve_repo_path "${selected_output}")"
-            args=(-o "${model}" -l "${loop_count}")
-            args+=(-i "${selected_input}" --output "${selected_output}")
+            args=(-m "${model}" -l "${loop_count}")
+            args+=(-i "${selected_input}" -o "${selected_output}")
             ;;
         yuv)
             bin="${build_dir}/bin/yolov8_yuv_frame_demo"
@@ -81,8 +87,8 @@ run_demo() {
             [[ -z "${selected_output}" ]] && selected_output="${build_dir}/output/output_yuv.jpg"
             selected_input="$(resolve_repo_path "${selected_input}")"
             selected_output="$(resolve_repo_path "${selected_output}")"
-            args=(-o "${model}" -l "${loop_count}" --yuv-width "${yuv_width}" --yuv-height "${yuv_height}")
-            args+=(--yuv "${selected_input}" --output "${selected_output}")
+            args=(-m "${model}" -l "${loop_count}" --yuv-width "${yuv_width}" --yuv-height "${yuv_height}")
+            args+=(-i "${selected_input}" -o "${selected_output}")
             ;;
         *)
             echo "--demo must be all, rgb, or yuv." >&2
@@ -90,11 +96,27 @@ run_demo() {
             ;;
     esac
 
-    echo "Demo: ${selected_demo}"
-    echo "Binary: ${bin}"
-    echo "Model: ${model}"
-    echo "Input: ${selected_input}"
-    echo "Output: ${selected_output}"
+    if [[ ! -x "${bin}" ]]; then
+        echo "${RED}[ERROR   ]${RESET} Application executable not found: ${bin}" >&2
+        echo "${CYAN}[ACTION  ]${RESET} Build the project first with: scripts/build.sh" >&2
+        exit 1
+    fi
+
+    printf '%s' "${BLUE}"
+    cat <<EOF
+
++------------------------------------------------------------------+
+|         XDL AI ACCELERATION - YOLOv8 OBJECT DETECTION            |
++------------------------------------------------------------------+
+  Workload                 : ${selected_demo^^} image inference
+  Model                    : ${model}
+  Input                    : ${selected_input}
+  Measured frames          : ${loop_count} (+ 1 warmup)
+  Result image             : ${selected_output}
++------------------------------------------------------------------+
+EOF
+    printf '%s' "${RESET}"
+    echo "${CYAN}[START   ]${RESET} Launching accelerated inference pipeline"
     "${bin}" "${args[@]}"
 }
 
@@ -154,20 +176,20 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ ! "${loop_count}" =~ ^[1-9][0-9]*$ ]]; then
-    echo "--loop must be a positive integer." >&2
+    echo "${RED}[ERROR   ]${RESET} --loop must be a positive integer." >&2
     exit 1
 fi
 
 if [[ -z "${model}" ]]; then
-    echo "No ONNX model was specified." >&2
-    echo "This repository does not include a model." >&2
-    echo "Provide one with: scripts/run.sh --model /path/to/model.onnx" >&2
+    echo "${RED}[ERROR   ]${RESET} No ONNX model was specified." >&2
+    echo "${CYAN}[DETAIL  ]${RESET} This repository does not include a model." >&2
+    echo "${CYAN}[ACTION  ]${RESET} Provide one with: scripts/run.sh --model /path/to/model.onnx" >&2
     exit 1
 fi
 
 model="$(resolve_repo_path "${model}")"
 if [[ ! -f "${model}" ]]; then
-    echo "ONNX model not found: ${model}" >&2
+    echo "${RED}[ERROR   ]${RESET} ONNX model not found: ${model}" >&2
     exit 1
 fi
 build_dir="$(resolve_repo_path "${build_dir}")"

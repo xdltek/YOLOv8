@@ -9,7 +9,7 @@ This module wraps OpenRT inference for YOLOv8-compatible ONNX models.
 ## Responsibilities
 
 - Parse the ONNX model.
-- Build the OpenRT execution engine.
+- Reuse a validated local OpenRT engine cache or build one from ONNX.
 - Own model input and output binding buffers.
 - Execute synchronous inference.
 - Expose model input shape, output shape, and tensor data types to the pipeline.
@@ -17,7 +17,7 @@ This module wraps OpenRT inference for YOLOv8-compatible ONNX models.
 ## Main API
 
 - `RppInferEngine::init()`
-  Builds the inference engine and allocates bindings.
+  Fingerprints the ONNX model, validates/reuses the matching engine cache, or builds and caches a BF16 engine before allocating bindings.
 - `RppInferEngine::execute()`
   Runs one inference pass using the current input binding.
 - `RppInferEngine::getInputDeviceBuffer()`
@@ -40,6 +40,8 @@ This module wraps OpenRT inference for YOLOv8-compatible ONNX models.
 
 Reuse this module when the model can be loaded through the same OpenRT ONNX flow. Keep model-specific preprocessing, postprocessing, labels, and visualization outside this module.
 
+Generated engines are stored in `<model-directory>/.engine_cache/`. The cache key includes the model content fingerprint, OpenRT version, and precision. A companion `.fnv1a` file is checked before deserialization; missing, changed, or corrupt cache data is rebuilt from ONNX. The model directory must be writable for persistence.
+
 ---
 
 <a id="chinese"></a>
@@ -53,7 +55,7 @@ Reuse this module when the model can be loaded through the same OpenRT ONNX flow
 ## 模块职责
 
 - 解析 ONNX 模型。
-- 构建 OpenRT 执行 engine。
+- 复用通过校验的本地 OpenRT engine 缓存，或从 ONNX 构建 engine。
 - 管理模型输入和输出 binding buffer。
 - 执行同步推理。
 - 向 pipeline 暴露模型输入尺寸、输出尺寸和 tensor 数据类型。
@@ -61,7 +63,7 @@ Reuse this module when the model can be loaded through the same OpenRT ONNX flow
 ## 主要 API
 
 - `RppInferEngine::init()`
-  构建推理 engine 并分配 binding。
+  计算 ONNX 内容指纹，校验并复用匹配的 engine 缓存；无可用缓存时构建并保存 BF16 engine，随后分配 binding。
 - `RppInferEngine::execute()`
   使用当前输入 binding 执行一次推理。
 - `RppInferEngine::getInputDeviceBuffer()`
@@ -83,3 +85,5 @@ Reuse this module when the model can be loaded through the same OpenRT ONNX flow
 ## 复用说明
 
 当模型可以通过相同的 OpenRT ONNX 流程加载时，可复用本模块。模型相关的前处理、后处理、标签和可视化逻辑应放在本模块之外。
+
+生成的 engine 保存在 `<模型目录>/.engine_cache/`。缓存键包含模型内容指纹、OpenRT 版本和精度配置；反序列化前会校验配套 `.fnv1a` 文件，校验缺失、内容变化或缓存损坏时会从 ONNX 重建。模型目录需要可写，才能持久保存缓存。

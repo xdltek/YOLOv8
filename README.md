@@ -174,21 +174,33 @@ The scripts are the recommended first-use entry point because they resolve paths
 
 ```shell
 build/bin/yolov8_rgb_image_demo \
-  -o /path/to/yolov8_model.onnx \
+  -m /path/to/yolov8_model.onnx \
   -i build/assets/test.jpg \
-  --output build/output/output_rgb.jpg \
+  -o build/output/output_rgb.jpg \
   -l 1
 
 build/bin/yolov8_yuv_frame_demo \
-  -o /path/to/yolov8_model.onnx \
-  --yuv build/assets/test_0.yuv \
+  -m /path/to/yolov8_model.onnx \
+  -i build/assets/test_0.yuv \
   --yuv-width 1280 \
   --yuv-height 720 \
-  --output build/output/output_yuv.jpg \
+  -o build/output/output_yuv.jpg \
   -l 1
 ```
 
 When running binaries directly, make sure `rpp_server` is already running if the installed RPP environment requires it.
+
+### OpenRT Engine Cache
+
+The first run builds a BF16 OpenRT engine from the selected ONNX model and stores it beside the model under `.engine_cache/`. Later runs reuse that engine when the ONNX content fingerprint, OpenRT version, precision, and engine integrity checksum still match. A changed model, missing checksum, or damaged cache triggers an automatic rebuild from ONNX.
+
+```text
+/path/to/.engine_cache/
+  model.onnx.openrt<version>.bf16.<model-fingerprint>.engine
+  model.onnx.openrt<version>.bf16.<model-fingerprint>.engine.fnv1a
+```
+
+The model directory must be writable to persist the cache. If it is read-only, inference can still use the engine built in memory, but the next process must build it again. Engine files are generated artifacts tied to the local OpenRT/RPP environment and must not be packaged as portable model files.
 
 For full command-line options and expected output, see the per-demo guides:
 
@@ -593,21 +605,33 @@ scripts/benchmark.sh --model /path/to/model.onnx --demo yuv --loop 20
 
 ```shell
 build/bin/yolov8_rgb_image_demo \
-  -o /path/to/yolov8_model.onnx \
+  -m /path/to/yolov8_model.onnx \
   -i build/assets/test.jpg \
-  --output build/output/output_rgb.jpg \
+  -o build/output/output_rgb.jpg \
   -l 1
 
 build/bin/yolov8_yuv_frame_demo \
-  -o /path/to/yolov8_model.onnx \
-  --yuv build/assets/test_0.yuv \
+  -m /path/to/yolov8_model.onnx \
+  -i build/assets/test_0.yuv \
   --yuv-width 1280 \
   --yuv-height 720 \
-  --output build/output/output_yuv.jpg \
+  -o build/output/output_yuv.jpg \
   -l 1
 ```
 
 如果直接运行二进制，请确认当前 RPP 环境需要的 `rpp_server` 已经启动。
+
+### OpenRT Engine 缓存
+
+首次运行会从指定 ONNX 模型构建 BF16 OpenRT engine，并保存到模型同级目录的 `.engine_cache/`。后续运行仅在 ONNX 内容指纹、OpenRT 版本、精度配置和 engine 完整性校验均一致时复用缓存。模型发生变化、校验文件缺失或缓存损坏时，会自动回退到 ONNX 并重新构建。
+
+```text
+/path/to/.engine_cache/
+  model.onnx.openrt<version>.bf16.<model-fingerprint>.engine
+  model.onnx.openrt<version>.bf16.<model-fingerprint>.engine.fnv1a
+```
+
+模型所在目录必须可写，才能持久保存缓存。如果目录只读，本次进程仍可使用内存中刚构建的 engine，但下次启动需要重新构建。Engine 是与本机 OpenRT/RPP 环境绑定的生成产物，不能作为可移植模型文件发布。
 
 完整命令行选项和预期输出见 demo 级文档：
 

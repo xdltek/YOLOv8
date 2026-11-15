@@ -8,7 +8,14 @@
 #include "parser_api.h"
 #include "sampleCommon.h"
 
+#include <cstdint>
+#include <exception>
+#include <filesystem>
+#include <fstream>
+#include <iomanip>
 #include <iostream>
+#include <sstream>
+#include <vector>
 
 namespace
 {
@@ -35,6 +42,137 @@ bool parseInputSpatialDims(const infer1::Dims& dims, int& width, int& height)
 
     return width > 0 && height > 0;
 }
+
+std::string modelFingerprint(const std::string& model_path)
+{
+    std::ifstream input(model_path, std::ios::binary);
+    if (!input) {
+        return {};
+    }
+
+    std::uint64_t hash = 14695981039346656037ULL;
+    char buffer[64 * 1024];
+    while (input.read(buffer, sizeof(buffer)) || input.gcount() > 0) {
+        for (std::streamsize i = 0; i < input.gcount(); ++i) {
+            hash ^= static_cast<unsigned char>(buffer[i]);
+            hash *= 1099511628211ULL;
+        }
+    }
+
+    std::ostringstream value;
+    value << std::hex << std::setfill('0') << std::setw(16) << hash;
+    return value.str();
+}
+
+std::filesystem::path engineCachePath(const std::string& model_path, const std::string& fingerprint)
+{
+    std::filesystem::path model(model_path);
+    std::ostringstream filename;
+    filename << model.filename().string() << ".openrt" << OPENRT_VERSION
+             << ".bf16." << fingerprint << ".engine";
+    return model.parent_path() / ".engine_cache" / filename.str();
+}
+
+std::string dataFingerprint(const void* data, size_t size)
+{
+    const auto* bytes = static_cast<const unsigned char*>(data);
+    std::uint64_t hash = 14695981039346656037ULL;
+    for (size_t i = 0; i < size; ++i) {
+        hash ^= bytes[i];
+        hash *= 1099511628211ULL;
+    }
+    std::ostringstream value;
+    value << std::hex << std::setfill('0') << std::setw(16) << hash;
+    return value.str();
+}
+
+bool loadCachedEngine(const std::filesystem::path& cache_path,
+                      std::unique_ptr<infer1::IRuntime>& runtime,
+                      std::shared_ptr<infer1::IEngine>& engine)
+{
+    std::ifstream input(cache_path, std::ios::binary | std::ios::ate);
+    if (!input || input.tellg() <= 0) {
+        return false;
+    }
+
+    const std::streamsize size = input.tellg();
+    input.seekg(0, std::ios::beg);
+    std::vector<char> data(static_cast<size_t>(size));
+    if (!input.read(data.data(), size)) {
+        return false;
+    }
+
+    std::ifstream checksum_input(cache_path.string() + ".fnv1a");
+    std::string expected_fingerprint;
+    checksum_input >> expected_fingerprint;
+    if (expected_fingerprint.empty()
+        || expected_fingerprint != dataFingerprint(data.data(), data.size())) {
+        std::cout << "[ENGINE  ] Engine cache integrity check failed; rebuilding from ONNX: "
+                  << cache_path << std::endl;
+        return false;
+    }
+
+    runtime.reset(infer1::createInferRuntime(sample::gLogger.getLogger()));
+    if (!runtime) {
+        return false;
+    }
+
+    sample::gLogger.clearRuntimeErrorCount();
+    try {
+        engine.reset(runtime->deserializeCudaEngine(data.data(), data.size()));
+    }
+    catch (const std::exception& error) {
+        engine.reset();
+        runtime.reset();
+        std::cout << "[ENGINE  ] Cached engine is invalid (" << error.what()
+                  << "); rebuilding from ONNX: " << cache_path << std::endl;
+        return false;
+    }
+    if (!engine || sample::gLogger.getRuntimeErrorCount() != 0) {
+        engine.reset();
+        runtime.reset();
+        std::cout << "[ENGINE  ] Cached engine could not be restored safely; rebuilding from ONNX: "
+                  << cache_path << std::endl;
+        return false;
+    }
+    return true;
+}
+
+bool saveEngineCache(const std::filesystem::path& cache_path, const infer1::IEngine& engine)
+{
+    std::unique_ptr<infer1::IHostMemory> serialized(engine.serialize());
+    if (!serialized || serialized->data() == nullptr || serialized->size() == 0) {
+        return false;
+    }
+
+    std::error_code error;
+    std::filesystem::create_directories(cache_path.parent_path(), error);
+    if (error) {
+        return false;
+    }
+
+    const std::filesystem::path temporary_path = cache_path.string() + ".tmp";
+    const std::filesystem::path checksum_path = cache_path.string() + ".fnv1a";
+    const std::filesystem::path checksum_temporary_path = checksum_path.string() + ".tmp";
+    std::ofstream output(temporary_path, std::ios::binary | std::ios::trunc);
+    if (!output.write(static_cast<const char*>(serialized->data()),
+                      static_cast<std::streamsize>(serialized->size()))) {
+        return false;
+    }
+    output.close();
+    std::ofstream checksum_output(checksum_temporary_path, std::ios::trunc);
+    checksum_output << dataFingerprint(serialized->data(), serialized->size()) << '\n';
+    if (!checksum_output) {
+        return false;
+    }
+    checksum_output.close();
+    std::filesystem::rename(temporary_path, cache_path, error);
+    if (error) {
+        return false;
+    }
+    std::filesystem::rename(checksum_temporary_path, checksum_path, error);
+    return !error;
+}
 }
 
 /**
@@ -42,6 +180,19 @@ bool parseInputSpatialDims(const infer1::Dims& dims, int& width, int& height)
  */
 bool RppInferEngine::init()
 {
+    const std::string fingerprint = modelFingerprint(onnx_model_path_);
+    if (fingerprint.empty()) {
+        std::cerr << "Unable to fingerprint ONNX model: " << onnx_model_path_ << std::endl;
+        return false;
+    }
+    const std::filesystem::path cache_path = engineCachePath(onnx_model_path_, fingerprint);
+
+    if (loadCachedEngine(cache_path, runtime_ptr_, engine_ptr_)) {
+        std::cout << "[ENGINE  ] Reusing cached OpenRT engine: " << cache_path << std::endl;
+    }
+    else {
+        std::cout << "[ENGINE  ] No reusable engine cache found; building from ONNX: "
+                  << onnx_model_path_ << std::endl;
     // Create the builder, network, and config objects that turn ONNX into an executable engine.
     std::unique_ptr<infer1::IBuilder> builder {infer1::createInferBuilder(sample::gLogger.getLogger())};
     if (builder == nullptr) {
@@ -67,7 +218,13 @@ bool RppInferEngine::init()
         std::cerr << "Unable to parse ONNX model file: " << onnx_model_path_ << std::endl;
         return false;
     }
-    if (onnx_parser(onnx_model_path_, builder.get(), network.get(), parser.get()) != 0) {
+    try {
+        if (onnx_parser(onnx_model_path_, builder.get(), network.get(), parser.get()) != 0) {
+            return false;
+        }
+    }
+    catch (const std::exception& error) {
+        std::cerr << "OpenRT could not import the ONNX model: " << error.what() << std::endl;
         return false;
     }
 
@@ -83,6 +240,15 @@ bool RppInferEngine::init()
 
     if (config->getFlag(infer1::BuilderFlag::kINT8)) {
         sample::user_visible_log("Since the model includes quantization layers, inference is performed with int8 precision.");
+    }
+
+        if (saveEngineCache(cache_path, *engine_ptr_)) {
+            std::cout << "[ENGINE  ] Built and cached OpenRT engine: " << cache_path << std::endl;
+        }
+        else {
+            std::cout << "[ENGINE  ] Built OpenRT engine; cache could not be written: "
+                      << cache_path << std::endl;
+        }
     }
 
     // Cache binding names, shapes, data types, and element counts for pipeline stages.

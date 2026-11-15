@@ -38,6 +38,8 @@ These measurements describe the local RPP validation environment and require hum
 - Added `weights/.gitkeep` so the local model directory exists while ONNX files remain ignored by Git.
 - Added detailed README coverage for the root project, demos, RPP modules, OpenRT inference, YOLOv8 application layer, utilities, performance trace helper, and API index.
 - Added dedicated bilingual preprocess and postprocess module README files to match the YOLOv5 package structure.
+- Added persistent OpenRT engine caching beside the external model, including model/version/precision cache keys and a pre-deserialization integrity checksum.
+- Added YOLOv5-style stage banners, progress display, performance reports, and separate end-to-end/OpenRT inference FPS output.
 
 ### Changed
 
@@ -49,7 +51,8 @@ These measurements describe the local RPP validation environment and require hum
 - Updated CMake to build `rpp_inference` and use the V2.0 directory layout.
 - Decoupled building from model availability: `scripts/build.sh` no longer downloads or verifies ONNX files.
 - Updated run and benchmark workflows to always require an external ONNX path through `-m/--model`; the release has no repository-local model fallback.
-- Updated demo binaries to provide default model, input, output, and loop settings while still supporting explicit CLI overrides.
+- Updated demo binary options to match the YOLOv5 convention: required `-m/--model`, `-i/--input`, `-o/--output`, and configurable loop count.
+- Damaged, incomplete, stale, or unchecked engine caches now fall back to rebuilding from ONNX instead of being reused.
 - Updated public documentation to use `ReleaseNote.md`, OpenRT naming, and current YOLOv8 module names consistently.
 - Updated `.gitignore` coverage for build outputs, generated runtime artifacts, local ONNX/model files, and ignored internal documents.
 - Added validated 1280×1024 YOLOv8n/s/m/l/x model contracts and measured RGB performance.
@@ -100,6 +103,8 @@ These measurements describe the local RPP validation environment and require hum
 - 新增 `weights/.gitkeep`，保留本地模型目录，同时继续忽略 ONNX 模型文件。
 - 新增根目录、demo、RPP 模块、OpenRT 推理、YOLOv8 应用层、工具、性能 trace 辅助和 API 索引的详细 README 覆盖。
 - 新增独立的双语前处理和后处理模块 README，与 YOLOv5 软件包结构保持一致。
+- 新增外部模型同级目录下的 OpenRT engine 持久缓存，缓存键包含模型、版本和精度信息，并在反序列化前执行完整性校验。
+- 新增与 YOLOv5 一致的阶段 banner、进度显示、性能报告，以及独立的端到端/OpenRT 推理 FPS。
 
 ### 变更
 
@@ -111,7 +116,8 @@ These measurements describe the local RPP validation environment and require hum
 - CMake 更新为构建 `rpp_inference` 并使用 V2.0 目录布局。
 - 编译流程与模型可用性解耦：`scripts/build.sh` 不再下载或校验 ONNX 文件。
 - 运行和 benchmark 流程更新为：始终必须通过 `-m/--model` 指定外部 ONNX 路径；发布包不存在仓库内模型 fallback。
-- demo 二进制更新为提供默认模型、输入、输出和 loop 配置，同时仍支持显式 CLI 覆盖。
+- demo 二进制参数与 YOLOv5 约定对齐：必须提供 `-m/--model`，输入使用 `-i/--input`，输出使用 `-o/--output`，并支持配置 loop 次数。
+- engine 缓存损坏、不完整、过期或缺少校验时，自动回退到 ONNX 重建，不再尝试复用。
 - 公开文档统一使用 `ReleaseNote.md`、OpenRT 命名和当前 YOLOv8 模块名称。
 - `.gitignore` 更新为覆盖构建产物、生成的运行产物、本地 ONNX/模型文件以及被忽略的内部文档。
 - 新增已验证的 1280×1024 YOLOv8n/s/m/l/x 模型契约和 RGB 实测性能。

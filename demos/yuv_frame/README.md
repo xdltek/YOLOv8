@@ -41,21 +41,22 @@ scripts/run.sh
 Run only the YUV demo from the repository root:
 
 ```shell
-scripts/run.sh --demo yuv
+scripts/run.sh --model /path/to/model.onnx --demo yuv
 ```
 
 Run a measured benchmark for the YUV demo:
 
 ```shell
-scripts/benchmark.sh --demo yuv --loop 20
+scripts/benchmark.sh --model /path/to/model.onnx --demo yuv --loop 20
 ```
 
-The script uses the default model at `weights/yolov8s.onnx`, the copied I420 frame at `build/assets/test_0.yuv`, default frame size `1280x720`, and the output path `build/output/output_yuv.jpg`.
+The repository does not ship an ONNX model. Pass an external model explicitly; the default I420 input is `build/assets/test_0.yuv`, its default frame size is `1280x720`, and the default output is `build/output/output_yuv.jpg`.
 
 To use another I420 frame through the script:
 
 ```shell
 scripts/run.sh --demo yuv \
+  --model /path/to/model.onnx \
   --input /path/to/frame.i420 \
   --yuv-width 1280 \
   --yuv-height 720
@@ -65,22 +66,22 @@ After building, the binary can also be executed directly:
 
 ```shell
 build/bin/yolov8_yuv_frame_demo \
-  -o weights/yolov8s.onnx \
-  --yuv build/assets/test_0.yuv \
+  -m /path/to/model.onnx \
+  -i build/assets/test_0.yuv \
   --yuv-width 1280 \
   --yuv-height 720 \
-  --output build/output/output_yuv.jpg \
+  -o build/output/output_yuv.jpg \
   -l 1
 ```
 
 ## Arguments
 
 ```text
--o, --onnx       ONNX model path. Default: ../../weights/yolov8s.onnx
---yuv            One-frame I420 YUV file. Default: ../assets/test_0.yuv
+-m, --model      ONNX model path. Required.
+-i, --input      One-frame I420 YUV file. Default: ../assets/test_0.yuv
 --yuv-width      I420 frame width. Default: 1280
 --yuv-height     I420 frame height. Default: 720
---output         Rendered output image path. Default: ../output/output_yuv.jpg
+-o, --output     Rendered output image path. Default: ../output/output_yuv.jpg
 -l, --loop       Measured loop count after one warmup pass. Default: 1
 -v, --verbose    Enable verbose runtime logging.
 ```
@@ -114,26 +115,24 @@ Draw boxes and save rendered image
 
 ## Output
 
-The demo prints model and input paths first, then a timing summary:
+The demo prints stage banners, cache status, progress, and a performance report:
 
 ```text
-Model path: ../../weights/yolov8s.onnx
-Inference YUV path: ../assets/test_0.yuv
-
-Summary:
-Loop count: <loop>
-Loop time: average per measured loop after warmup
-Input H2D: <ms> ms, <bytes> bytes, <KiB> KiB
-Preprocess: <ms> ms
-Inference: <ms> ms
-Postprocess: <ms> ms
-Output D2H: <ms> ms, <bytes> bytes, <KiB> KiB
-All time end to end: <ms> ms (preprocess+inference+postprocess)
-FPS: <fps>
-Output path: ../output/output_yuv.jpg
+[ENGINE  ] Reusing cached OpenRT engine: <cache-path>
+[WARMUP  ] Running 1 unmeasured frame for stable performance
+[BENCH   ] Measuring <loop> full-pipeline frames
+End-to-end FPS           : <fps>
+OpenRT inference FPS     : <fps>
+Detections (last frame)  : <count>
+Input H2D transfer       : <ms> ms  (<KiB> KiB)
+Preprocess               : <ms> ms
+OpenRT inference         : <ms> ms
+Postprocess              : <ms> ms
+Output D2H transfer      : <ms> ms  (<KiB> KiB)
+Visualization            : <output-path>
 ```
 
-`Input H2D` and `Output D2H` are printed separately. `All time end to end` is the sum of the printed `Preprocess`, `Inference`, and `Postprocess` stages and is used for FPS.
+Transfer time is reported separately. End-to-end latency and FPS use `preprocess + inference + postprocess`.
 
 The rendered image is saved to `build/output/output_yuv.jpg` by default.
 
@@ -191,21 +190,22 @@ scripts/run.sh
 从仓库根目录只运行 YUV demo：
 
 ```shell
-scripts/run.sh --demo yuv
+scripts/run.sh --model /path/to/model.onnx --demo yuv
 ```
 
 执行 YUV demo benchmark：
 
 ```shell
-scripts/benchmark.sh --demo yuv --loop 20
+scripts/benchmark.sh --model /path/to/model.onnx --demo yuv --loop 20
 ```
 
-脚本默认使用 `weights/yolov8s.onnx` 模型、`build/assets/test_0.yuv` I420 输入帧、`1280x720` 默认帧尺寸，并将结果保存到 `build/output/output_yuv.jpg`。
+仓库不随附 ONNX 模型，运行时必须显式传入外部模型。默认 I420 输入为 `build/assets/test_0.yuv`，默认帧尺寸为 `1280x720`，默认输出为 `build/output/output_yuv.jpg`。
 
 通过脚本使用其他 I420 输入帧：
 
 ```shell
 scripts/run.sh --demo yuv \
+  --model /path/to/model.onnx \
   --input /path/to/frame.i420 \
   --yuv-width 1280 \
   --yuv-height 720
@@ -215,22 +215,22 @@ scripts/run.sh --demo yuv \
 
 ```shell
 build/bin/yolov8_yuv_frame_demo \
-  -o weights/yolov8s.onnx \
-  --yuv build/assets/test_0.yuv \
+  -m /path/to/model.onnx \
+  -i build/assets/test_0.yuv \
   --yuv-width 1280 \
   --yuv-height 720 \
-  --output build/output/output_yuv.jpg \
+  -o build/output/output_yuv.jpg \
   -l 1
 ```
 
 ## 参数
 
 ```text
--o, --onnx       ONNX 模型路径。默认：../../weights/yolov8s.onnx
---yuv            单帧 I420 YUV 文件。默认：../assets/test_0.yuv
+-m, --model      ONNX 模型路径。必填。
+-i, --input      单帧 I420 YUV 文件。默认：../assets/test_0.yuv
 --yuv-width      I420 帧宽。默认：1280
 --yuv-height     I420 帧高。默认：720
---output         绘制检测框后的输出图片路径。默认：../output/output_yuv.jpg
+-o, --output     绘制检测框后的输出图片路径。默认：../output/output_yuv.jpg
 -l, --loop       warmup 之后的测量 loop 次数。默认：1
 -v, --verbose    开启更详细的运行时日志。
 ```
@@ -264,26 +264,24 @@ Warmup：完整执行一次 pipeline
 
 ## 输出
 
-demo 会先打印模型和输入路径，然后打印计时摘要：
+demo 会打印阶段 banner、缓存状态、运行进度和性能报告：
 
 ```text
-Model path: ../../weights/yolov8s.onnx
-Inference YUV path: ../assets/test_0.yuv
-
-Summary:
-Loop count: <loop>
-Loop time: average per measured loop after warmup
-Input H2D: <ms> ms, <bytes> bytes, <KiB> KiB
-Preprocess: <ms> ms
-Inference: <ms> ms
-Postprocess: <ms> ms
-Output D2H: <ms> ms, <bytes> bytes, <KiB> KiB
-All time end to end: <ms> ms (preprocess+inference+postprocess)
-FPS: <fps>
-Output path: ../output/output_yuv.jpg
+[ENGINE  ] Reusing cached OpenRT engine: <cache-path>
+[WARMUP  ] Running 1 unmeasured frame for stable performance
+[BENCH   ] Measuring <loop> full-pipeline frames
+End-to-end FPS           : <fps>
+OpenRT inference FPS     : <fps>
+Detections (last frame)  : <count>
+Input H2D transfer       : <ms> ms  (<KiB> KiB)
+Preprocess               : <ms> ms
+OpenRT inference         : <ms> ms
+Postprocess              : <ms> ms
+Output D2H transfer      : <ms> ms  (<KiB> KiB)
+Visualization            : <output-path>
 ```
 
-`Input H2D` 和 `Output D2H` 单独打印。`All time end to end` 为打印的 `Preprocess`、`Inference` 和 `Postprocess` 三个阶段之和，并用于计算 FPS。
+传输时间单独报告；端到端 latency 和 FPS 使用 `preprocess + inference + postprocess` 计算。
 
 绘制后的图片默认保存到 `build/output/output_yuv.jpg`。
 

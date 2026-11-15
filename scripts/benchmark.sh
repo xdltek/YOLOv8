@@ -4,6 +4,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
+if [[ "${YOLO_COLOR:-always}" != "never" ]]; then
+    BLUE=$'\033[1;34m'; CYAN=$'\033[1;36m'; GREEN=$'\033[1;32m'; RED=$'\033[1;31m'; RESET=$'\033[0m'
+else
+    BLUE=""; CYAN=""; GREEN=""; RED=""; RESET=""
+fi
+
 show_help() {
     cat <<'EOF'
 Usage: scripts/benchmark.sh [options]
@@ -79,7 +85,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ ! "${loop_count}" =~ ^[1-9][0-9]*$ ]]; then
-    echo "--loop must be a positive integer." >&2
+    echo "${RED}[ERROR   ]${RESET} --loop must be a positive integer." >&2
     exit 1
 fi
 
@@ -94,9 +100,9 @@ if [[ "${demo}" == "all" && ( -n "${input}" || -n "${output}" ) ]]; then
 fi
 
 if [[ -z "${model}" ]]; then
-    echo "No ONNX model was specified." >&2
-    echo "This repository does not include a model." >&2
-    echo "Provide one with: scripts/benchmark.sh --model /path/to/model.onnx" >&2
+    echo "${RED}[ERROR   ]${RESET} No ONNX model was specified." >&2
+    echo "${CYAN}[DETAIL  ]${RESET} This repository does not include a model." >&2
+    echo "${CYAN}[ACTION  ]${RESET} Provide one with: scripts/benchmark.sh --model /path/to/model.onnx" >&2
     exit 1
 fi
 
@@ -119,8 +125,18 @@ if [[ "${demo}" == "yuv" || "${demo}" == "all" ]]; then
 fi
 
 {
-    echo "Benchmark demo: ${demo}"
-    echo "Measured loop count: ${loop_count}"
-    echo "Log: ${log_path}"
+    printf '%s' "${BLUE}"
+    cat <<EOF
++------------------------------------------------------------------+
+|             XDL YOLOv8 PERFORMANCE BENCHMARK                     |
++------------------------------------------------------------------+
+  Test scope               : ${demo^^}
+  Measured frames          : ${loop_count} per workload (+ 1 warmup)
+  Performance log          : ${log_path}
++------------------------------------------------------------------+
+EOF
+    printf '%s' "${RESET}"
+    echo "${CYAN}[BENCH   ]${RESET} Benchmark started; live progress follows below."
     "${cmd[@]}"
+    echo "${GREEN}[ARCHIVE ]${RESET} Benchmark log saved: ${log_path}"
 } 2>&1 | tee "${log_path}"
