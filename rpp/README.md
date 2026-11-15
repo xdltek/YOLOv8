@@ -12,12 +12,12 @@ Related documentation: [API documentation](../docs/api/README.md): public API in
 
 ## Directory Layout
 
-- `inference/`
+- [`inference/`](inference/README.md)
   Generic OpenRT inference engine wrapper. It parses the ONNX model, builds the execution engine, owns binding buffers, and measures the inference execution interval.
-- `preprocess/`
+- [`preprocess/`](preprocess/README.md)
   YOLO input preprocessing on RPP. It provides host-side wrapper code plus RPP kernels for RGB/BGR image input and I420 YUV frame input.
-- `postprocess/`
-  YOLOv8 output postprocessing on RPP. It resolves YOLOv8 tensor layouts, prepares RT_NMS inputs, runs NMS when supported, and returns compact detection results to the host.
+- [`postprocess/`](postprocess/README.md)
+  YOLOv8 output postprocessing on RPP. One fused graph transposes channel-major output, casts it to BF16, slices boxes and class scores, and runs NMS.
 
 ## Call Flow
 
@@ -61,13 +61,13 @@ The RPP layer keeps intermediate tensors on the device whenever possible:
 - Input H2D happens before preprocessing. RGB/BGR demos copy decoded image bytes; YUV demos copy the I420 frame bytes.
 - Preprocessing output stays on the device and is consumed directly by `RppInferEngine`.
 - Inference output stays on the device and is consumed directly by `YoloV8Postprocessor`.
-- Output D2H copies only the compact postprocessed detection buffer required by the CPU to draw boxes or print results.
+- Output D2H copies NMS indices plus BF16 box and score tensors required to restore selected detections for drawing.
 
-The CPU does not run YOLOv8 decode or NMS in the normal RT_NMS path. A CPU fallback is kept for unsupported layouts or RT_NMS setup failure.
+The CPU does not run YOLOv8 decode or NMS. Unsupported output layouts fail during initialization instead of silently switching to a CPU fallback.
 
 ## Postprocess Contract
 
-`postprocess/YoloV8Postprocessor` supports common Ultralytics detection output layouts:
+`postprocess/YoloV8Postprocessor` supports static Ultralytics detection output layouts:
 
 ```text
 [C, N], [N, C], [1, C, N], [1, N, C]
@@ -128,11 +128,11 @@ For a non-YOLO model:
 
 ## 目录结构
 
-- `inference/`
+- [`inference/`](inference/README.md)
   通用 OpenRT 推理 engine 封装。它负责解析 ONNX 模型、构建执行 engine、管理 binding buffer，并测量推理执行区间。
-- `preprocess/`
+- [`preprocess/`](preprocess/README.md)
   YOLO 输入前处理的 RPP 实现。该目录包含 host 侧封装代码，以及面向 RGB/BGR 图片输入和 I420 YUV 帧输入的 RPP kernel。
-- `postprocess/`
+- [`postprocess/`](postprocess/README.md)
   YOLOv8 输出后处理的 RPP 实现。它解析 YOLOv8 tensor layout，准备 RT_NMS 输入，在支持时执行 NMS，并将 compact 检测结果返回 host。
 
 ## 调用流程
@@ -177,13 +177,13 @@ RPP 层会尽可能让中间 tensor 保留在 device 侧：
 - 输入 H2D 发生在前处理之前。RGB/BGR demo 复制解码后的图片字节；YUV demo 复制 I420 帧字节。
 - 前处理输出保留在 device 侧，并直接作为 `RppInferEngine` 的输入。
 - 推理输出保留在 device 侧，并直接作为 `YoloV8Postprocessor` 的输入。
-- 输出 D2H 只复制 compact 后的检测结果 buffer，CPU 使用该结果进行画框或打印。
+- 输出 D2H 复制 NMS 索引，以及恢复选中检测框所需的 BF16 框和分数 tensor。
 
-常规 RT_NMS 路径中，CPU 不执行 YOLOv8 decode 或 NMS。对于不支持的 layout 或 RT_NMS 初始化失败场景，保留 CPU fallback。
+CPU 不执行 YOLOv8 decode 或 NMS。不支持的输出 layout 会在初始化阶段直接失败，不会静默切换到 CPU fallback。
 
 ## 后处理约束
 
-`postprocess/YoloV8Postprocessor` 支持常见 Ultralytics 检测输出 layout：
+`postprocess/YoloV8Postprocessor` 支持静态 Ultralytics 检测输出 layout：
 
 ```text
 [C, N], [N, C], [1, C, N], [1, N, C]

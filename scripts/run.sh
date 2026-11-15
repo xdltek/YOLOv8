@@ -11,8 +11,8 @@ show_help() {
 Usage: scripts/run.sh [options]
 
 Options:
-  -m, --model PATH      ONNX model path. Default: weights/yolov8s.onnx
-  -d, --demo NAME       Demo to run: all, rgb, or yuv. Default: all
+  -m, --model PATH      ONNX model path. Required.
+  -d, --demo NAME       Workload selector: all, rgb, or yuv. Default: all
   -i, --input PATH      RGB image path or I420 YUV path.
   -o, --output PATH     Rendered output path.
   -b, --build-dir DIR   Build directory. Default: build
@@ -98,7 +98,7 @@ run_demo() {
     "${bin}" "${args[@]}"
 }
 
-model="weights/yolov8s.onnx"
+model=""
 demo="all"
 input=""
 output=""
@@ -153,7 +153,23 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+if [[ ! "${loop_count}" =~ ^[1-9][0-9]*$ ]]; then
+    echo "--loop must be a positive integer." >&2
+    exit 1
+fi
+
+if [[ -z "${model}" ]]; then
+    echo "No ONNX model was specified." >&2
+    echo "This repository does not include a model." >&2
+    echo "Provide one with: scripts/run.sh --model /path/to/model.onnx" >&2
+    exit 1
+fi
+
 model="$(resolve_repo_path "${model}")"
+if [[ ! -f "${model}" ]]; then
+    echo "ONNX model not found: ${model}" >&2
+    exit 1
+fi
 build_dir="$(resolve_repo_path "${build_dir}")"
 
 case "${demo}" in

@@ -1,6 +1,6 @@
 <a id="english"></a>
 
-# YOLOv8 Inference Demo on RPP
+# RPP-Accelerated YOLOv8 Application
 
 Language switch: click [English](#english) or [中文](#chinese) to jump to the corresponding section.
 
@@ -23,14 +23,18 @@ It helps users quickly build the project, run inference with default settings, a
 - [Key Source Files](#key-source-files)
 - [Reusable Components](#reusable-components)
 - [How to Adapt This Demo](#how-to-adapt-this-demo)
+- [Known Limitations](#known-limitations)
+- [Troubleshooting](#troubleshooting)
+- [Validated Models](#validated-models)
+- [Appendix: Export ONNX From a PT Model](#appendix-export-onnx-from-a-pt-model)
 
 ## Quick Start
 
-Run from the repository root. `scripts/build.sh` downloads and verifies the default YOLOv8s ONNX model under `weights/` when it is missing.
+Run from the repository root. Building does not require an ONNX model. This repository does not include or download model files; provide a supported model when running inference.
 
 ```shell
 scripts/build.sh
-scripts/run.sh
+scripts/run.sh --model /path/to/yolov8_model.onnx
 ```
 
 Successful execution should print warmup-stable stage timing and FPS for the RGB and YUV demos, and generate rendered images under `build/output`.
@@ -39,19 +43,19 @@ The standard scripts are:
 
 | Script | Purpose |
 |---|---|
-| `scripts/build.sh` | Downloads the default model when needed, cleans previous build outputs, configures CMake, and builds the project. |
+| `scripts/build.sh` | Cleans previous build outputs, configures CMake, and builds the project without downloading a model. |
 | `scripts/run.sh` | Runs all demos by default, or one selected demo with configurable model, input, output, and loop count. |
 | `scripts/benchmark.sh` | Runs all demos by default with repeated measured loops and saves a full log automatically. |
 
 Common first checks:
 
 ```shell
-scripts/run.sh --demo rgb
-scripts/run.sh --demo yuv
-scripts/benchmark.sh
+scripts/run.sh --model /path/to/model.onnx --demo rgb
+scripts/run.sh --model /path/to/model.onnx --demo yuv
+scripts/benchmark.sh --model /path/to/model.onnx
 ```
 
-`scripts/run.sh` resolves paths from the repository root. By default it runs `rgb` and `yuv` serially, uses `weights/yolov8s.onnx`, reads inputs from `build/assets`, and writes rendered images to `build/output`. If `/usr/local/rpp/bin/rpp_server` exists, the script ensures it is running before launching the demo and writes the server log to `build/logs/rpp_server.log`.
+`scripts/run.sh` resolves paths from the repository root and runs `rgb` and `yuv` serially unless one workload is selected. The model path is always required through `-m/--model`; no repository-local fallback is assumed. Reference inputs come from `build/assets`, and rendered images are written to `build/output`. If `/usr/local/rpp/bin/rpp_server` exists, the script ensures it is running before launch and writes its log to `build/logs/rpp_server.log`.
 
 `scripts/benchmark.sh` saves the full console log to `build/logs/benchmark_<demo>_<timestamp>.log`.
 
@@ -69,6 +73,10 @@ Linked paths in this section can be clicked to jump to their detailed README.
   YOLOv8-specific labels, detection types, visualization, and pipeline composition.
 - [`rpp/`](rpp/README.md)
   RPP hardware-facing modules, including OpenRT inference, preprocessing kernels/modules, and YOLOv8 postprocessing.
+- [`rpp/preprocess/`](rpp/preprocess/README.md)
+  RPP input formats, letterbox geometry, normalization, and memory-flow details.
+- [`rpp/postprocess/`](rpp/postprocess/README.md)
+  YOLOv8 output contracts, transpose, score reduction, and fused RPP NMS details.
 - `demos/`
   Executable demo entries, including RGB image and I420 YUV frame demos.
 - [`docs/`](docs/README.md)
@@ -78,11 +86,11 @@ Linked paths in this section can be clicked to jump to their detailed README.
 - `assets/`
   Source sample image and I420 frame copied into `build/assets/` for quick verification.
 - `weights/`
-  Local model drop-in directory. The directory is kept in Git, but model files are ignored.
+  Empty placeholder directory only. ONNX files are not part of the repository or release package.
 - `3rd_party/`
   `argparse` header-only library used by demo main files for CLI parsing.
 
-This repository does not track ONNX model files in Git. `scripts/build.sh` keeps `weights/yolov8s.onnx` available by downloading it from `xdltek/onnx_model_tool` and checking its MD5 when needed. Class names for overlays are the embedded MS COCO 80-class list in `src/yolov8/labels.cpp` (`coco80_class_labels()`), matching standard YOLO COCO pretrained ordering.
+This repository does not include or track ONNX model files in Git. Building is independent of model availability and never downloads or verifies a model. At runtime, always pass an external model path with `-m/--model`; omitting it is an error. Class names for overlays use the embedded MS COCO 80-class list in `src/yolov8/labels.cpp` (`coco80_class_labels()`); classes beyond that table are displayed as `class_<id>`.
 
 ## Demo Guides
 
@@ -109,7 +117,6 @@ Before building this demo, make sure the following dependencies are available:
 - OpenCV with the components required by this project
 - OpenRT installed under `/usr/local/rpp`
 - Runtime libraries required by the target RPP accelerator card environment
-- `wget` and `md5sum` when the default model must be downloaded by `scripts/build.sh`
 
 If your OpenRT installation path is different, update the corresponding path settings in `CMakeLists.txt`.
 
@@ -121,11 +128,7 @@ Run the following command from the repository root:
 scripts/build.sh
 ```
 
-If `weights/yolov8s.onnx` is missing, the build script downloads the default model and verifies:
-
-```shell
-e86050e2e944cd8944863fd8fddd1dea  weights/yolov8s.onnx
-```
+The build does not require, download, or verify an ONNX model. A supported model is required only when running inference or a benchmark.
 
 After the build completes successfully, the executables should be available at:
 
@@ -147,20 +150,20 @@ build/logs/     script and benchmark logs
 
 ## How to Run
 
-Run demos from the repository root after building the project. The default model path is `weights/yolov8s.onnx`; pass `--model` only when using a different model.
+Run demos from the repository root after building the project. The release package does not contain an ONNX model, so `-m/--model` is required.
 
 ```shell
-scripts/run.sh
+scripts/run.sh --model /path/to/model.onnx
 ```
 
 By default, `scripts/run.sh` runs the RGB and YUV demos serially. Use `--demo rgb` or `--demo yuv` when running a single demo or passing a custom input/output path.
 
-Benchmark runs use the same default model and inputs:
+Benchmark runs require the same explicit model selection:
 
 ```shell
-scripts/benchmark.sh
-scripts/benchmark.sh --demo rgb --loop 20
-scripts/benchmark.sh --demo yuv --loop 20
+scripts/benchmark.sh --model /path/to/model.onnx
+scripts/benchmark.sh --model /path/to/model.onnx --demo rgb --loop 20
+scripts/benchmark.sh --model /path/to/model.onnx --demo yuv --loop 20
 ```
 
 Each script supports `-h` and `--help`.
@@ -171,13 +174,13 @@ The scripts are the recommended first-use entry point because they resolve paths
 
 ```shell
 build/bin/yolov8_rgb_image_demo \
-  -o weights/yolov8s.onnx \
+  -o /path/to/yolov8_model.onnx \
   -i build/assets/test.jpg \
   --output build/output/output_rgb.jpg \
   -l 1
 
 build/bin/yolov8_yuv_frame_demo \
-  -o weights/yolov8s.onnx \
+  -o /path/to/yolov8_model.onnx \
   --yuv build/assets/test_0.yuv \
   --yuv-width 1280 \
   --yuv-height 720 \
@@ -248,7 +251,7 @@ For full command-line options and expected output, see the per-demo guides:
 - `rpp/preprocess/rpp_yolo_preprocessor.h`
   RGB/BGR and I420 input preprocessing wrapper.
 - `rpp/postprocess/rpp_yolov8_postprocessor.h`
-  YOLOv8 output layout resolution, RT_NMS integration, and fallback postprocessing.
+  Fused RPP YOLOv8 transpose, BF16 conversion, box/class slicing, and NMS.
 
 ## Reusable Components
 
@@ -268,16 +271,156 @@ For full command-line options and expected output, see the per-demo guides:
 For a new YOLOv8-style application:
 
 1. Keep the standard build/run scripts as the outer entry points.
-2. Replace the model under `weights/` or pass a custom model with `--model`.
+2. Pass the external ONNX model path with `--model`.
 3. Confirm the model output layout is compatible with `YoloV8Postprocessor`.
 4. Add input-specific loading code in a demo executable if RGB/BGR image or I420 frame input is not enough.
 5. Keep model labels, visualization, and reporting in `src/yolov8/` or the demo layer, not inside the generic inference wrapper.
+
+## Known Limitations
+
+- The application supports static FP32 YOLOv8 detection bindings. Dynamic shapes and non-detection tasks require separate adaptation.
+- Supported output heads contain four pixel-space `xywh` channels followed by class scores, without embedded NMS.
+- The repository does not distribute, download, or verify ONNX model files.
+- COCO labels are embedded. Other taxonomies render as `class_<id>` unless the application is extended with the matching label table.
+- Reported performance is local validation data and requires review on the target hardware and SDK stack.
+
+## Troubleshooting
+
+- If no model is present, rerun with `scripts/run.sh --model /path/to/model.onnx` or the equivalent benchmark option.
+- If the demo executable is missing, build first with `scripts/build.sh`.
+- If the model is rejected, verify that its static input/output shapes match the contracts documented below and that embedded NMS is disabled.
+- If the selected build directory was produced by another CMake generator, rerun `scripts/build.sh --build-dir <dir>`; the script cleans only generated build outputs.
+- If the installed environment requires `rpp_server`, inspect `<build-dir>/logs/rpp_server.log` after a launch failure.
+
+## Validated Models
+
+The application was validated with three static FP32 detection contracts. Model files were local validation inputs only and are not repository or release artifacts.
+
+| Model family | Input | Output | Classes | Opset | Status |
+|---|---|---|---:|---:|---|
+| YOLOv8n/s/m/l/x COCO | `[1,3,640,640]` | `[1,84,8400]` | 80 | 17 | PASS |
+| YOLOv8n/s/m/l/x OIV7 | `[1,3,640,640]` | `[1,605,8400]` | 601 | 17 | PASS |
+| YOLOv8n/s/m/l/x COCO | `[1,3,1280,1024]` | `[1,84,26880]` | 80 | 18 | PASS |
+
+Validation included ONNX checker, OpenRT/RPP engine construction, one full-pipeline warmup, 20 measured RGB frames, fused RPP postprocessing, and non-empty rendered output images. The 1280×1024 family also passed the I420 YUV application smoke test.
+
+### COCO 640×640 performance
+
+| Model profile | Preprocess | Inference | Postprocess | End-to-end | FPS | Status |
+|---|---:|---:|---:|---:|---:|---|
+| YOLOv8n 640×640 | 2.219 ms | 3.491 ms | 2.557 ms | 8.266 ms | 120.981 | PASS |
+| YOLOv8s 640×640 | 2.265 ms | 5.418 ms | 2.663 ms | 10.347 ms | 96.644 | PASS |
+| YOLOv8m 640×640 | 2.617 ms | 14.575 ms | 3.969 ms | 21.160 ms | 47.258 | PASS |
+| YOLOv8l 640×640 | 2.624 ms | 24.427 ms | 3.896 ms | 30.947 ms | 32.313 | PASS |
+| YOLOv8x 640×640 | 2.238 ms | 39.632 ms | 2.991 ms | 44.861 ms | 22.291 | PASS |
+
+### OIV7 640×640 performance
+
+| Model profile | Preprocess | Inference | Postprocess | End-to-end | FPS | Status |
+|---|---:|---:|---:|---:|---:|---|
+| YOLOv8n-OIV7 640×640 | 2.533 ms | 5.133 ms | 13.485 ms | 21.151 ms | 47.279 | PASS |
+| YOLOv8s-OIV7 640×640 | 2.566 ms | 6.797 ms | 13.584 ms | 22.946 ms | 43.580 | PASS |
+| YOLOv8m-OIV7 640×640 | 2.625 ms | 16.367 ms | 14.333 ms | 33.325 ms | 30.007 | PASS |
+| YOLOv8l-OIV7 640×640 | 2.737 ms | 26.360 ms | 14.679 ms | 43.776 ms | 22.844 | PASS |
+| YOLOv8x-OIV7 640×640 | 2.935 ms | 41.703 ms | 14.608 ms | 59.247 ms | 16.879 | PASS |
+
+### COCO 1280×1024 performance
+
+| Model profile | Preprocess | Inference | Postprocess | End-to-end | FPS | Status |
+|---|---:|---:|---:|---:|---:|---|
+| YOLOv8n 1280×1024 | 4.515 ms | 12.473 ms | 6.101 ms | 23.088 ms | 43.313 | PASS |
+| YOLOv8s 1280×1024 | 4.481 ms | 22.504 ms | 6.486 ms | 33.471 ms | 29.876 | PASS |
+| YOLOv8m 1280×1024 | 4.596 ms | 53.078 ms | 6.806 ms | 64.480 ms | 15.509 | PASS |
+| YOLOv8l 1280×1024 | 4.453 ms | 82.287 ms | 6.583 ms | 93.323 ms | 10.716 | PASS |
+| YOLOv8x 1280×1024 | 4.560 ms | 137.005 ms | 6.773 ms | 148.337 ms | 6.741 | PASS |
+
+Each result is the average of 20 measured loops after one full-pipeline warmup. End-to-end latency is `preprocess + inference + postprocess`; model initialization and visualization are excluded. These measurements describe the local RPP validation environment and are not cross-platform performance guarantees.
+
+> **Review required:** Confirm the target accelerator, SDK, driver, firmware, clock, utilization, and power configuration before using these values in an external performance commitment.
+
+## Appendix: Export ONNX From a PT Model
+
+### Export requirements
+
+Export a YOLOv8 **detection** model with the following contract:
+
+| Setting | Required value |
+|---|---|
+| Input | FP32 NCHW `[1,3,H,W]`; validated at 640×640 and 1280×1024 |
+| Output | FP32 `[1,4+classes,N]` or `[1,N,4+classes]` |
+| Batch size | `1` |
+| Input dimensions | Static |
+| ONNX opset | `17` for validated 640×640 models; `18` for validated 1280×1024 models |
+| Graph simplification | Enabled |
+| Embedded NMS | Disabled; this application performs fused RPP NMS |
+
+> **Important:** Do not export with `dynamic=True` or `nms=True`. Classification, segmentation, pose, oriented-box, and end-to-end NMS outputs use different contracts and require separate postprocessing.
+
+### Install Ultralytics and export
+
+The following procedure mirrors the YOLOv5 export workflow and works for official or custom-trained YOLOv8 `.pt` detection weights:
+
+```bash
+git clone https://github.com/ultralytics/ultralytics.git
+cd ultralytics
+python3 -m pip install -e .
+python3 -m pip install onnx onnxruntime onnxslim
+
+yolo export \
+  model=yolov8n.pt \
+  format=onnx \
+  imgsz=640 \
+  batch=1 \
+  opset=17 \
+  dynamic=False \
+  simplify=True \
+  nms=False
+```
+
+Replace `yolov8n.pt` with `yolov8s.pt`, `yolov8m.pt`, `yolov8l.pt`, `yolov8x.pt`, or the path to a custom-trained detection checkpoint. Ultralytics writes the ONNX file beside the PT model. The file can remain outside this repository.
+
+### Why this differs from YOLOv5
+
+The README structure follows the YOLOv5 application, but the upstream exporters are model-family specific. Classic YOLOv5 uses `python export.py --include onnx`; YOLOv8 uses the Ultralytics `yolo export` interface. For YOLOv8, `yolo export` is preferred because it applies the current YOLOv8-specific export logic and options. Do not run a YOLOv8 checkpoint through the YOLOv5 `export.py` script. For a reproducible release, pin the Ultralytics tag or commit used for export instead of relying on an unversioned latest checkout.
+
+### Verify the exported contract
+
+Run the ONNX checker and print the external tensor shapes before using the model:
+
+```bash
+python3 - <<'PY'
+import onnx
+
+path = "/path/to/yolov8n.onnx"
+model = onnx.load(path, load_external_data=False)
+onnx.checker.check_model(model)
+
+def shape(value):
+    return [dimension.dim_value or dimension.dim_param for dimension in value.type.tensor_type.shape.dim]
+
+print("inputs:", [(value.name, shape(value)) for value in model.graph.input])
+print("outputs:", [(value.name, shape(value)) for value in model.graph.output])
+print("ONNX check: PASS")
+PY
+```
+
+For a standard COCO model, the expected output is `[1,84,8400]`: four pixel-space `xywh` box channels followed by 80 class-score channels. A custom model uses `[1,4+classes,8400]`. The application derives the class count from this output shape. COCO class names are displayed automatically; custom and OIV7 classes without a bundled label table are displayed as `class_<id>`.
+
+For the validated 1280×1024 contract, export with `imgsz=1280,1024 opset=18`; the dimensions are height followed by width. Its standard COCO output is `[1,84,26880]`.
+
+Run the exported model with:
+
+```bash
+scripts/run.sh \
+  --demo rgb \
+  --model /path/to/yolov8n.onnx
+```
 
 ---
 
 <a id="chinese"></a>
 
-# YOLOv8 RPP 推理 Demo
+# RPP 加速 YOLOv8 应用
 
 语言切换：点击 [English](#english) 或 [中文](#chinese) 跳转到对应语言章节。
 
@@ -299,14 +442,18 @@ For a new YOLOv8-style application:
 - [关键源码](#关键源码)
 - [可复用组件](#可复用组件)
 - [如何适配此 Demo](#如何适配此-demo)
+- [已知限制](#已知限制)
+- [故障排查](#故障排查)
+- [已验证模型](#已验证模型)
+- [附录：从 PT 模型导出 ONNX](#附录从-pt-模型导出-onnx)
 
 ## 快速开始
 
-从仓库根目录执行。`scripts/build.sh` 会在缺少默认模型时下载并校验 `weights/yolov8s.onnx`。
+从仓库根目录执行。编译不需要 ONNX 模型。本仓库不包含也不会下载模型文件；运行推理时需提供受支持的模型。
 
 ```shell
 scripts/build.sh
-scripts/run.sh
+scripts/run.sh --model /path/to/yolov8_model.onnx
 ```
 
 执行成功后，应打印 RGB 和 YUV demo 的阶段耗时与 FPS，并在 `build/output` 下生成绘制后的图片。
@@ -315,19 +462,19 @@ scripts/run.sh
 
 | 脚本 | 用途 |
 |---|---|
-| `scripts/build.sh` | 在需要时下载默认模型，清理旧构建产物，配置 CMake，并构建工程。 |
+| `scripts/build.sh` | 清理旧构建产物、配置 CMake 并构建工程，不下载模型。 |
 | `scripts/run.sh` | 默认运行全部 demo，也可选择单个 demo 并配置模型、输入、输出和 loop 次数。 |
 | `scripts/benchmark.sh` | 默认对全部 demo 执行多轮测量，并自动保存完整日志。 |
 
 常用首次检查：
 
 ```shell
-scripts/run.sh --demo rgb
-scripts/run.sh --demo yuv
-scripts/benchmark.sh
+scripts/run.sh --model /path/to/model.onnx --demo rgb
+scripts/run.sh --model /path/to/model.onnx --demo yuv
+scripts/benchmark.sh --model /path/to/model.onnx
 ```
 
-`scripts/run.sh` 会从仓库根目录解析路径。默认情况下，它串行运行 `rgb` 和 `yuv`，使用 `weights/yolov8s.onnx`，从 `build/assets` 读取输入，并把绘制结果写入 `build/output`。如果存在 `/usr/local/rpp/bin/rpp_server`，脚本会在启动 demo 前确保服务运行，并把服务日志写入 `build/logs/rpp_server.log`。
+`scripts/run.sh` 会从仓库根目录解析路径；未显式选择 workload 时会串行运行 `rgb` 和 `yuv`。每次运行都必须通过 `-m/--model` 指定外部模型路径，不假设仓库内存在 fallback 模型。参考输入从 `build/assets` 读取，绘制结果写入 `build/output`。如果存在 `/usr/local/rpp/bin/rpp_server`，脚本会在启动前确保服务运行，并把日志写入 `build/logs/rpp_server.log`。
 
 `scripts/benchmark.sh` 会把完整控制台日志保存到 `build/logs/benchmark_<demo>_<timestamp>.log`。
 
@@ -345,6 +492,10 @@ scripts/benchmark.sh
   YOLOv8 专属标签、检测类型、可视化和 pipeline 组合。
 - [`rpp/`](rpp/README.md)
   面向 RPP 硬件的模块，包括 OpenRT 推理、前处理 kernel/module 和 YOLOv8 后处理。
+- [`rpp/preprocess/`](rpp/preprocess/README.md)
+  RPP 输入格式、letterbox 几何、归一化和内存流说明。
+- [`rpp/postprocess/`](rpp/postprocess/README.md)
+  YOLOv8 输出契约、转置、分数归约和融合 RPP NMS 说明。
 - `demos/`
   可执行 demo 入口，包括 RGB 图片和 I420 YUV 帧 demo。
 - [`docs/`](docs/README.md)
@@ -354,11 +505,11 @@ scripts/benchmark.sh
 - `assets/`
   源示例图片和 I420 帧，会复制到 `build/assets/` 用于快速验证。
 - `weights/`
-  本地模型目录。目录会保留在 Git 中，但模型文件被忽略。
+  仅为空目录占位符；仓库和发布包均不包含 ONNX 文件。
 - `3rd_party/`
   demo main 使用的 `argparse` header-only 库。
 
-本仓库不在 Git 中跟踪 ONNX 模型文件。`scripts/build.sh` 会从 `xdltek/onnx_model_tool` 下载并校验 `weights/yolov8s.onnx`。框选显示使用 `src/yolov8/labels.cpp` 中内置的 MS COCO 80 类标签表（`coco80_class_labels()`），匹配标准 YOLO COCO 预训练类别顺序。
+本仓库不包含 ONNX 模型文件，也不在 Git 中跟踪此类文件。编译过程与模型是否存在无关，不会下载或校验模型。运行时必须通过 `-m/--model` 指定外部模型路径；省略该参数会直接报错。可视化使用 `src/yolov8/labels.cpp` 中内置的 MS COCO 80 类列表；超出该列表的类别显示为 `class_<id>`。
 
 ## Demo 指南
 
@@ -385,7 +536,6 @@ scripts/benchmark.sh
 - 工程所需 OpenCV 组件
 - OpenRT 安装在 `/usr/local/rpp`
 - 目标 RPP 加速卡环境所需运行时库
-- 当 `scripts/build.sh` 需要下载默认模型时，需要 `wget` 和 `md5sum`
 
 如果 OpenRT 安装路径不同，请更新 `CMakeLists.txt` 中的对应路径配置。
 
@@ -397,11 +547,7 @@ scripts/benchmark.sh
 scripts/build.sh
 ```
 
-如果缺少 `weights/yolov8s.onnx`，构建脚本会下载默认模型并校验：
-
-```shell
-e86050e2e944cd8944863fd8fddd1dea  weights/yolov8s.onnx
-```
+编译不需要、不会下载、也不会校验 ONNX 模型。只有执行推理或 benchmark 时才需要提供受支持的模型。
 
 构建成功后，可执行文件位于：
 
@@ -423,20 +569,20 @@ build/logs/     脚本和 benchmark 日志
 
 ## 如何运行
 
-构建完成后，从仓库根目录运行 demo。默认模型路径是 `weights/yolov8s.onnx`；只有使用其他模型时才需要传入 `--model`。
+构建完成后，从仓库根目录运行 demo。发布包不包含 ONNX 模型，因此必须通过 `-m/--model` 指定模型。
 
 ```shell
-scripts/run.sh
+scripts/run.sh --model /path/to/model.onnx
 ```
 
 默认情况下，`scripts/run.sh` 串行运行 RGB 和 YUV demo。需要单独运行一个 demo 或传入自定义输入/输出路径时，使用 `--demo rgb` 或 `--demo yuv`。
 
-Benchmark 使用相同的默认模型和输入：
+Benchmark 同样需要显式指定模型：
 
 ```shell
-scripts/benchmark.sh
-scripts/benchmark.sh --demo rgb --loop 20
-scripts/benchmark.sh --demo yuv --loop 20
+scripts/benchmark.sh --model /path/to/model.onnx
+scripts/benchmark.sh --model /path/to/model.onnx --demo rgb --loop 20
+scripts/benchmark.sh --model /path/to/model.onnx --demo yuv --loop 20
 ```
 
 每个脚本都支持 `-h` 和 `--help`。
@@ -447,13 +593,13 @@ scripts/benchmark.sh --demo yuv --loop 20
 
 ```shell
 build/bin/yolov8_rgb_image_demo \
-  -o weights/yolov8s.onnx \
+  -o /path/to/yolov8_model.onnx \
   -i build/assets/test.jpg \
   --output build/output/output_rgb.jpg \
   -l 1
 
 build/bin/yolov8_yuv_frame_demo \
-  -o weights/yolov8s.onnx \
+  -o /path/to/yolov8_model.onnx \
   --yuv build/assets/test_0.yuv \
   --yuv-width 1280 \
   --yuv-height 720 \
@@ -521,7 +667,7 @@ build/bin/yolov8_yuv_frame_demo \
 - `rpp/preprocess/rpp_yolo_preprocessor.h`
   RGB/BGR 和 I420 输入前处理封装。
 - `rpp/postprocess/rpp_yolov8_postprocessor.h`
-  YOLOv8 输出 layout 解析、RT_NMS 集成和 fallback 后处理。
+  融合的 RPP YOLOv8 转置、BF16 转换、框/类别切分和 NMS 后处理。
 
 ## 可复用组件
 
@@ -541,7 +687,147 @@ build/bin/yolov8_yuv_frame_demo \
 适配新的 YOLOv8 应用时：
 
 1. 保留标准 build/run 脚本作为外部入口。
-2. 替换 `weights/` 下的模型，或通过 `--model` 传入自定义模型。
+2. 通过 `--model` 传入外部 ONNX 模型路径。
 3. 确认模型输出 layout 与 `YoloV8Postprocessor` 兼容。
 4. 如果 RGB/BGR 图片或 I420 帧输入不满足需求，在 demo 可执行入口中添加新的输入加载逻辑。
 5. 将模型标签、可视化和报告逻辑保留在 `src/yolov8/` 或 demo 层，不放入通用推理封装。
+
+## 已知限制
+
+- 应用支持静态 FP32 YOLOv8 检测 binding；动态 shape 和非检测任务需要单独适配。
+- 支持的输出 head 由 4 个像素坐标 `xywh` 通道和类别分数组成，不包含内嵌 NMS。
+- 仓库不分发、下载或校验 ONNX 模型文件。
+- 内置 COCO 标签；其他类别体系在未扩展匹配标签表时显示为 `class_<id>`。
+- 文档中的性能数据为本地验证结果，必须在目标硬件和 SDK 软件栈上复核。
+
+## 故障排查
+
+- 本地没有模型时，使用 `scripts/run.sh --model /path/to/model.onnx` 或对应 benchmark 参数重新运行。
+- demo 可执行文件不存在时，先执行 `scripts/build.sh`。
+- 模型被拒绝时，确认静态输入/输出 shape 与下文契约一致，并确认未内嵌 NMS。
+- 所选 build 目录由其他 CMake generator 生成时，重新执行 `scripts/build.sh --build-dir <dir>`；脚本只清理生成的构建产物。
+- 当前环境需要 `rpp_server` 时，启动失败后检查 `<build-dir>/logs/rpp_server.log`。
+
+## 已验证模型
+
+应用已验证三组静态 FP32 检测契约。模型文件仅作为本地验证输入，不属于仓库或发布物。
+
+| 模型系列 | 输入 | 输出 | 类别数 | Opset | 状态 |
+|---|---|---|---:|---:|---|
+| YOLOv8n/s/m/l/x COCO | `[1,3,640,640]` | `[1,84,8400]` | 80 | 17 | PASS |
+| YOLOv8n/s/m/l/x OIV7 | `[1,3,640,640]` | `[1,605,8400]` | 601 | 17 | PASS |
+| YOLOv8n/s/m/l/x COCO | `[1,3,1280,1024]` | `[1,84,26880]` | 80 | 18 | PASS |
+
+验证内容包括 ONNX checker、OpenRT/RPP engine 构建、1 次完整 pipeline warmup、20 帧 RGB 正式测量、融合 RPP 后处理以及非空检测结果图片输出。1280×1024 系列还通过了 I420 YUV 应用冒烟测试。
+
+### COCO 640×640 性能
+
+| 模型规格 | 前处理 | 推理 | 后处理 | 端到端 | FPS | 状态 |
+|---|---:|---:|---:|---:|---:|---|
+| YOLOv8n 640×640 | 2.219 ms | 3.491 ms | 2.557 ms | 8.266 ms | 120.981 | PASS |
+| YOLOv8s 640×640 | 2.265 ms | 5.418 ms | 2.663 ms | 10.347 ms | 96.644 | PASS |
+| YOLOv8m 640×640 | 2.617 ms | 14.575 ms | 3.969 ms | 21.160 ms | 47.258 | PASS |
+| YOLOv8l 640×640 | 2.624 ms | 24.427 ms | 3.896 ms | 30.947 ms | 32.313 | PASS |
+| YOLOv8x 640×640 | 2.238 ms | 39.632 ms | 2.991 ms | 44.861 ms | 22.291 | PASS |
+
+### OIV7 640×640 性能
+
+| 模型规格 | 前处理 | 推理 | 后处理 | 端到端 | FPS | 状态 |
+|---|---:|---:|---:|---:|---:|---|
+| YOLOv8n-OIV7 640×640 | 2.533 ms | 5.133 ms | 13.485 ms | 21.151 ms | 47.279 | PASS |
+| YOLOv8s-OIV7 640×640 | 2.566 ms | 6.797 ms | 13.584 ms | 22.946 ms | 43.580 | PASS |
+| YOLOv8m-OIV7 640×640 | 2.625 ms | 16.367 ms | 14.333 ms | 33.325 ms | 30.007 | PASS |
+| YOLOv8l-OIV7 640×640 | 2.737 ms | 26.360 ms | 14.679 ms | 43.776 ms | 22.844 | PASS |
+| YOLOv8x-OIV7 640×640 | 2.935 ms | 41.703 ms | 14.608 ms | 59.247 ms | 16.879 | PASS |
+
+### COCO 1280×1024 性能
+
+| 模型规格 | 前处理 | 推理 | 后处理 | 端到端 | FPS | 状态 |
+|---|---:|---:|---:|---:|---:|---|
+| YOLOv8n 1280×1024 | 4.515 ms | 12.473 ms | 6.101 ms | 23.088 ms | 43.313 | PASS |
+| YOLOv8s 1280×1024 | 4.481 ms | 22.504 ms | 6.486 ms | 33.471 ms | 29.876 | PASS |
+| YOLOv8m 1280×1024 | 4.596 ms | 53.078 ms | 6.806 ms | 64.480 ms | 15.509 | PASS |
+| YOLOv8l 1280×1024 | 4.453 ms | 82.287 ms | 6.583 ms | 93.323 ms | 10.716 | PASS |
+| YOLOv8x 1280×1024 | 4.560 ms | 137.005 ms | 6.773 ms | 148.337 ms | 6.741 | PASS |
+
+每项结果均为完整 pipeline warmup 1 次后正式测量 20 次的平均值。端到端耗时为 `前处理 + 推理 + 后处理`，不包含模型初始化和可视化。这些数据仅代表本地 RPP 验证环境，不构成跨平台性能保证。
+
+> **需要复核：** 将这些数据用于对外性能承诺前，必须确认目标加速卡、SDK、驱动、固件、频率、利用率和功耗配置。
+
+## 附录：从 PT 模型导出 ONNX
+
+### 导出要求
+
+YOLOv8 **目标检测**模型必须按以下契约导出：
+
+| 配置项 | 必需值 |
+|---|---|
+| 输入 | FP32 NCHW `[1,3,H,W]`；已验证 640×640 和 1280×1024 |
+| 输出 | FP32 `[1,4+类别数,N]` 或 `[1,N,4+类别数]` |
+| Batch size | `1` |
+| 输入维度 | 静态 |
+| ONNX opset | 已验证 640×640 模型使用 `17`；已验证 1280×1024 模型使用 `18` |
+| 图简化 | 启用 |
+| 内嵌 NMS | 禁用；本应用执行融合 RPP NMS |
+
+> **重要：** 不要使用 `dynamic=True` 或 `nms=True`。分类、分割、姿态、旋转框以及端到端 NMS 模型具有不同的输出契约，需要单独适配后处理。
+
+### 安装 Ultralytics 并导出
+
+以下流程与 YOLOv5 导出方式一致，适用于官方或自定义训练的 YOLOv8 `.pt` 检测模型：
+
+```bash
+git clone https://github.com/ultralytics/ultralytics.git
+cd ultralytics
+python3 -m pip install -e .
+python3 -m pip install onnx onnxruntime onnxslim
+
+yolo export \
+  model=yolov8n.pt \
+  format=onnx \
+  imgsz=640 \
+  batch=1 \
+  opset=17 \
+  dynamic=False \
+  simplify=True \
+  nms=False
+```
+
+可将 `yolov8n.pt` 替换为 `yolov8s.pt`、`yolov8m.pt`、`yolov8l.pt`、`yolov8x.pt`，或自定义训练检测权重的路径。Ultralytics 会在 PT 模型所在目录生成 ONNX 文件，该文件可以保留在仓库外部。
+
+### 为什么与 YOLOv5 不同
+
+README 的章节结构与 YOLOv5 应用保持一致，但上游导出工具与模型系列相关。经典 YOLOv5 使用 `python export.py --include onnx`；YOLOv8 使用 Ultralytics 的 `yolo export` 接口。对于 YOLOv8，优先使用 `yolo export`，因为它包含当前 YOLOv8 专属的导出逻辑和参数。不要使用 YOLOv5 的 `export.py` 导出 YOLOv8 checkpoint。准备可复现发布时，应固定用于导出的 Ultralytics tag 或 commit，不要依赖未固定版本的最新代码。
+
+### 验证导出契约
+
+使用模型前，运行 ONNX checker 并打印外部 tensor shape：
+
+```bash
+python3 - <<'PY'
+import onnx
+
+path = "/path/to/yolov8n.onnx"
+model = onnx.load(path, load_external_data=False)
+onnx.checker.check_model(model)
+
+def shape(value):
+    return [dimension.dim_value or dimension.dim_param for dimension in value.type.tensor_type.shape.dim]
+
+print("inputs:", [(value.name, shape(value)) for value in model.graph.input])
+print("outputs:", [(value.name, shape(value)) for value in model.graph.output])
+print("ONNX check: PASS")
+PY
+```
+
+标准 COCO 模型的预期输出为 `[1,84,8400]`：前四个通道是像素坐标 `xywh` 检测框，随后是 80 个类别分数通道。自定义模型使用 `[1,4+类别数,8400]`。应用会从该输出 shape 自动推导类别数。COCO 模型会自动显示类别名称；未内置标签表的自定义模型和 OIV7 模型显示为 `class_<id>`。
+
+已验证的 1280×1024 契约应使用 `imgsz=1280,1024 opset=18` 导出；尺寸顺序为高、宽。标准 COCO 输出为 `[1,84,26880]`。
+
+使用以下命令运行导出的模型：
+
+```bash
+scripts/run.sh \
+  --demo rgb \
+  --model /path/to/yolov8n.onnx
+```

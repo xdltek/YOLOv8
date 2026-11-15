@@ -28,7 +28,7 @@ Click a module path below to jump to its guide:
 - `RppYoloPreprocessor`
   RPP preprocessing module for letterbox resize, format conversion, and normalization.
 - `YoloV8Postprocessor`
-  YOLOv8 output layout resolution, RT_NMS setup, result conversion, and CPU fallback.
+  YOLOv8 output layout validation and fused RPP transpose/slice/NMS execution.
 
 Use the module README files for migration notes, input/output contracts, and API boundaries.
 
@@ -64,6 +64,6 @@ Use the module README files for migration notes, input/output contracts, and API
 - `RppYoloPreprocessor`
   用于 letterbox resize、格式转换和归一化的 RPP 前处理模块。
 - `YoloV8Postprocessor`
-  用于 YOLOv8 输出 layout 解析、RT_NMS 配置、结果转换和 CPU fallback 的后处理模块。
+  用于 YOLOv8 输出 layout 校验以及融合 RPP 转置、切分和 NMS 执行的后处理模块。
 
 迁移说明、输入输出约束和 API 边界请查看各模块 README。

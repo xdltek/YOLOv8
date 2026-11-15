@@ -13,7 +13,9 @@
 #include <opencv2/core.hpp>
 
 #include <chrono>
+#include <algorithm>
 #include <iostream>
+#include <limits>
 
 namespace
 {
@@ -37,6 +39,34 @@ bool update_config_from_model(const RppInferEngine& infer_engine, YoloV8Config& 
         std::cerr << "Invalid YOLOv8 model tensor dimensions." << std::endl;
         return false;
     }
+
+    // Standard YOLOv8 detection exports use [1, 4 + classes, anchors] or
+    // [1, anchors, 4 + classes]. Infer the class count from the smaller of
+    // the two non-batch axes so COCO and OIV7 heads share the same pipeline.
+    int first_axis = -1;
+    int second_axis = -1;
+    for (int i = 0; i < config.output_dimensions.nbDims; ++i) {
+        const int dimension = config.output_dimensions.d[i];
+        if (dimension <= 1) {
+            continue;
+        }
+        if (first_axis < 0) {
+            first_axis = dimension;
+        }
+        else if (second_axis < 0) {
+            second_axis = dimension;
+        }
+        else {
+            std::cerr << "Unsupported YOLOv8 detection output rank." << std::endl;
+            return false;
+        }
+    }
+    if (first_axis <= 4 || second_axis <= 4) {
+        std::cerr << "Unable to infer YOLOv8 class count from model output." << std::endl;
+        return false;
+    }
+    const int feature_channels = std::min(first_axis, second_axis);
+    config.class_count = feature_channels - 4;
     return true;
 }
 
@@ -100,9 +130,7 @@ bool YoloV8Pipeline::init(const YoloV8PipelineOptions& options, const std::vecto
 bool YoloV8Pipeline::initPostprocessor(const std::vector<std::string>& class_names)
 {
     PERF_SCOPE_CATE("yolov8_pipeline_init_postprocess", "postprocess");
-    if (!class_names.empty()) {
-        config_.class_count = static_cast<int>(class_names.size());
-    }
+    (void)class_names;
 
     postprocessor_ = std::make_unique<YoloV8Postprocessor>();
     return postprocessor_->init(config_);

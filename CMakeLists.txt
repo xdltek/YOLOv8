@@ -49,20 +49,6 @@ set(YOLO_PERF_INCLUDE_DIR ${ROOT_DIRECTORY}/src/perf)
 set(RPP_INFERENCE_INCLUDE_DIR ${ROOT_DIRECTORY}/rpp/inference)
 set(RPP_PREPROCESS_INCLUDE_DIR ${ROOT_DIRECTORY}/rpp/preprocess)
 set(RPP_POSTPROCESS_INCLUDE_DIR ${ROOT_DIRECTORY}/rpp/postprocess)
-set(AEOS_NMS_PRE_INCLUDE_DIR ${ROOT_DIRECTORY}/rpp/postprocess/aeos_nms_pre/includes)
-
-add_library(aeosnmspre SHARED
-    ${ROOT_DIRECTORY}/rpp/postprocess/aeos_nms_pre/src/nmspre_plugin.cc
-    ${ROOT_DIRECTORY}/rpp/postprocess/aeos_nms_pre/src/nmspre_kernel.cu
-)
-target_include_directories(aeosnmspre PUBLIC
-    ${AEOS_NMS_PRE_INCLUDE_DIR}
-    ${RppRT_INCLUDE_DIRS}
-)
-target_link_libraries(aeosnmspre PRIVATE ${rpprt_libs})
-set_target_properties(aeosnmspre PROPERTIES
-    BUILD_RPATH "$ORIGIN;${RppRT_LIBS}"
-)
 
 add_library(yolov8_utils SHARED
     ${ROOT_DIRECTORY}/src/utils/logger.cpp
@@ -140,7 +126,7 @@ target_include_directories(rpp_yolov8_postprocess PRIVATE
     ${YOLO_PERF_INCLUDE_DIR}
     ${YOLO_UTILS_INCLUDE_DIR}
 )
-target_link_libraries(rpp_yolov8_postprocess PUBLIC perf_trace yolov8_utils ${rpprt_libs} aeosnmspre ${OpenCV_LIBS})
+target_link_libraries(rpp_yolov8_postprocess PUBLIC perf_trace yolov8_utils ${rpprt_libs} ${OpenCV_LIBS})
 set_target_properties(rpp_yolov8_postprocess PROPERTIES
     BUILD_RPATH "$ORIGIN;${RppRT_LIBS}"
 )
