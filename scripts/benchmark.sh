@@ -23,6 +23,7 @@ Options:
   -l, --loop COUNT      Measured loop count. Default: 20
       --yuv-width N     I420 width for the YUV workload. Default: 1280
       --yuv-height N    I420 height for the YUV workload. Default: 720
+      --rebuild-engine  Build a fresh BF16 engine from the complete ONNX; do not read or write cache.
   -h, --help            Show this help message.
 
 Logs are saved to <build-dir>/logs/benchmark_<workload>_<timestamp>.log.
@@ -37,6 +38,7 @@ build_dir="build"
 loop_count="20"
 yuv_width="1280"
 yuv_height="720"
+rebuild_engine="0"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -71,6 +73,10 @@ while [[ $# -gt 0 ]]; do
         --yuv-height)
             yuv_height="$2"
             shift 2
+            ;;
+        --rebuild-engine)
+            rebuild_engine="1"
+            shift
             ;;
         -h|--help)
             show_help
@@ -117,6 +123,7 @@ timestamp="$(date +%Y%m%d_%H%M%S)"
 log_path="${log_dir}/benchmark_${demo}_${timestamp}.log"
 
 cmd=("${SCRIPT_DIR}/run.sh" --demo "${demo}" --loop "${loop_count}" --build-dir "${build_dir}")
+[[ "${rebuild_engine}" == "1" ]] && cmd+=(--rebuild-engine)
 [[ -n "${model}" ]] && cmd+=(--model "${model}")
 [[ -n "${input}" ]] && cmd+=(--input "${input}")
 [[ -n "${output}" ]] && cmd+=(--output "${output}")

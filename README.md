@@ -202,6 +202,15 @@ The first run builds a BF16 OpenRT engine from the selected ONNX model and store
 
 The model directory must be writable to persist the cache. If it is read-only, inference can still use the engine built in memory, but the next process must build it again. Engine files are generated artifacts tied to the local OpenRT/RPP environment and must not be packaged as portable model files.
 
+For correctness validation of large YOLOv8 exports, `--rebuild-engine` keeps the complete original ONNX graph and normal BF16 build policy, while deliberately skipping both cache loading and cache writing:
+
+```shell
+scripts/run.sh --model /path/to/model.onnx --demo yuv --rebuild-engine
+scripts/benchmark.sh --model /path/to/model.onnx --demo yuv --loop 20 --rebuild-engine
+```
+
+Engine construction is excluded from the reported frame latency. Because this mode rebuilds at every process start, use it as a correctness workaround and validation mode until engine deserialization is verified by the installed OpenRT/RPP release.
+
 For full command-line options and expected output, see the per-demo guides:
 
 - [RGB image demo](demos/rgb_image/README.md): RGB/BGR image demo guide.
@@ -632,6 +641,15 @@ build/bin/yolov8_yuv_frame_demo \
 ```
 
 模型所在目录必须可写，才能持久保存缓存。如果目录只读，本次进程仍可使用内存中刚构建的 engine，但下次启动需要重新构建。Engine 是与本机 OpenRT/RPP 环境绑定的生成产物，不能作为可移植模型文件发布。
+
+验证大尺寸 YOLOv8 导出模型时，可以使用 `--rebuild-engine`。该模式保留完整原生 ONNX 图和标准 BF16 构建策略，并明确跳过 engine cache 的读取和写入：
+
+```shell
+scripts/run.sh --model /path/to/model.onnx --demo yuv --rebuild-engine
+scripts/benchmark.sh --model /path/to/model.onnx --demo yuv --loop 20 --rebuild-engine
+```
+
+报告的单帧延迟不包含 engine 构建时间。该模式会在每个进程启动时重新构建，建议在当前 OpenRT/RPP 版本尚未验证 engine 反序列化之前，将其作为正确性规避和验证模式使用。
 
 完整命令行选项和预期输出见 demo 级文档：
 

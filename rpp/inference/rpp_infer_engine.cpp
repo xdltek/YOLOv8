@@ -187,12 +187,18 @@ bool RppInferEngine::init()
     }
     const std::filesystem::path cache_path = engineCachePath(onnx_model_path_, fingerprint);
 
-    if (loadCachedEngine(cache_path, runtime_ptr_, engine_ptr_)) {
+    if (!rebuild_engine_ && loadCachedEngine(cache_path, runtime_ptr_, engine_ptr_)) {
         std::cout << "[ENGINE  ] Reusing cached OpenRT engine: " << cache_path << std::endl;
     }
     else {
-        std::cout << "[ENGINE  ] No reusable engine cache found; building from ONNX: "
-                  << onnx_model_path_ << std::endl;
+        if (rebuild_engine_) {
+            std::cout << "[ENGINE  ] Forced rebuild from complete ONNX; engine cache is disabled: "
+                      << onnx_model_path_ << std::endl;
+        }
+        else {
+            std::cout << "[ENGINE  ] No reusable engine cache found; building from ONNX: "
+                      << onnx_model_path_ << std::endl;
+        }
     // Create the builder, network, and config objects that turn ONNX into an executable engine.
     std::unique_ptr<infer1::IBuilder> builder {infer1::createInferBuilder(sample::gLogger.getLogger())};
     if (builder == nullptr) {
@@ -228,7 +234,8 @@ bool RppInferEngine::init()
         return false;
     }
 
-    // Build a single-batch BF16-capable engine for the demo inference path.
+    // Forced rebuild preserves the complete original ONNX graph and the same
+    // BF16 build policy; only persistent engine-cache reuse is bypassed.
     builder->setMaxBatchSize(1);
     config->setMaxWorkspaceSize((size_t)1_GiB);
     config->setFlag(BuilderFlag::kBF16);
@@ -242,7 +249,10 @@ bool RppInferEngine::init()
         sample::user_visible_log("Since the model includes quantization layers, inference is performed with int8 precision.");
     }
 
-        if (saveEngineCache(cache_path, *engine_ptr_)) {
+        if (rebuild_engine_) {
+            std::cout << "[ENGINE  ] Fresh BF16 engine is memory-only; cache write skipped." << std::endl;
+        }
+        else if (saveEngineCache(cache_path, *engine_ptr_)) {
             std::cout << "[ENGINE  ] Built and cached OpenRT engine: " << cache_path << std::endl;
         }
         else {
