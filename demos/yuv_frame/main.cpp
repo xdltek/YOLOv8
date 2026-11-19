@@ -90,10 +90,6 @@ int main(int argc, char** argv)
             .help("show verbose runtime log.")
             .default_value(false)
             .implicit_value(true);
-    program.add_argument("--rebuild-engine")
-            .help("build a fresh BF16 engine from the complete ONNX model without using the engine cache.")
-            .default_value(false)
-            .implicit_value(true);
 
     // Step 2: normalize command-line spelling before argparse parses the options.
     auto preprocessed_arguments = preprocess_args(argc, argv);
@@ -163,12 +159,11 @@ int main(int argc, char** argv)
     // Step 7: initialize the reusable YOLOv8 pipeline around the requested model.
     YoloV8PipelineOptions pipeline_options;
     pipeline_options.model_path = model_path;
-    pipeline_options.rebuild_engine = program["--rebuild-engine"] == true;
     pipeline_options.inference_count = 1;
 
     YoloV8Pipeline pipeline;
     const std::vector<std::string>& class_list = coco80_class_labels();
-    demo_reporter::print_stage("INIT", "Loading or building OpenRT inference engine on RPP accelerator");
+    demo_reporter::print_stage("INIT", "Building the in-memory OpenRT engine on the RPP accelerator");
     if (!pipeline.init(pipeline_options, class_list)) {
         return EXIT_FAILURE;
     }

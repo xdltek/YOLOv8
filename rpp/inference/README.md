@@ -9,7 +9,7 @@ This module wraps OpenRT inference for YOLOv8-compatible ONNX models.
 ## Responsibilities
 
 - Parse the ONNX model.
-- Reuse a validated local OpenRT engine cache or build one from ONNX.
+- Build one in-memory BF16 OpenRT engine from the complete ONNX graph at process startup.
 - Own model input and output binding buffers.
 - Execute synchronous inference.
 - Expose model input shape, output shape, and tensor data types to the pipeline.
@@ -17,7 +17,7 @@ This module wraps OpenRT inference for YOLOv8-compatible ONNX models.
 ## Main API
 
 - `RppInferEngine::init()`
-  Fingerprints the ONNX model, validates/reuses the matching engine cache, or builds and caches a BF16 engine before allocating bindings.
+  Builds an in-memory BF16 engine from ONNX and allocates its bindings.
 - `RppInferEngine::execute()`
   Runs one inference pass using the current input binding.
 - `RppInferEngine::getInputDeviceBuffer()`
@@ -40,7 +40,7 @@ This module wraps OpenRT inference for YOLOv8-compatible ONNX models.
 
 Reuse this module when the model can be loaded through the same OpenRT ONNX flow. Keep model-specific preprocessing, postprocessing, labels, and visualization outside this module.
 
-Generated engines are stored in `<model-directory>/.engine_cache/`. The cache key includes the model content fingerprint, OpenRT version, and precision. A companion `.fnv1a` file is checked before deserialization; missing, changed, or corrupt cache data is rebuilt from ONNX. The model directory must be writable for persistence.
+The engine remains owned by `RppInferEngine` and is reused until that object is destroyed. No persistent engine file is required or generated.
 
 ---
 
@@ -55,7 +55,7 @@ Generated engines are stored in `<model-directory>/.engine_cache/`. The cache ke
 ## 模块职责
 
 - 解析 ONNX 模型。
-- 复用通过校验的本地 OpenRT engine 缓存，或从 ONNX 构建 engine。
+- 在进程启动时从完整 ONNX 图构建一个内存常驻 BF16 OpenRT engine。
 - 管理模型输入和输出 binding buffer。
 - 执行同步推理。
 - 向 pipeline 暴露模型输入尺寸、输出尺寸和 tensor 数据类型。
@@ -63,7 +63,7 @@ Generated engines are stored in `<model-directory>/.engine_cache/`. The cache ke
 ## 主要 API
 
 - `RppInferEngine::init()`
-  计算 ONNX 内容指纹，校验并复用匹配的 engine 缓存；无可用缓存时构建并保存 BF16 engine，随后分配 binding。
+  从 ONNX 构建内存常驻 BF16 engine，并分配 binding。
 - `RppInferEngine::execute()`
   使用当前输入 binding 执行一次推理。
 - `RppInferEngine::getInputDeviceBuffer()`
@@ -86,4 +86,4 @@ Generated engines are stored in `<model-directory>/.engine_cache/`. The cache ke
 
 当模型可以通过相同的 OpenRT ONNX 流程加载时，可复用本模块。模型相关的前处理、后处理、标签和可视化逻辑应放在本模块之外。
 
-生成的 engine 保存在 `<模型目录>/.engine_cache/`。缓存键包含模型内容指纹、OpenRT 版本和精度配置；反序列化前会校验配套 `.fnv1a` 文件，校验缺失、内容变化或缓存损坏时会从 ONNX 重建。模型目录需要可写，才能持久保存缓存。
+Engine 由 `RppInferEngine` 持有，并持续复用到该对象销毁。运行不需要也不会生成持久化 engine 文件。

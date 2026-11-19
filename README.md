@@ -55,7 +55,7 @@ scripts/run.sh --model /path/to/model.onnx --demo yuv
 scripts/benchmark.sh --model /path/to/model.onnx
 ```
 
-`scripts/run.sh` resolves paths from the repository root and runs `rgb` and `yuv` serially unless one workload is selected. Pass the model through `-m/--model`; when that option is omitted, the script uses `weights/yolov8s.onnx` only if the user has placed that local file there. Reference inputs come from `build/assets`, and rendered images are written to `build/output`. If `/usr/local/rpp/bin/rpp_server` exists, the script ensures it is running before launch and writes its log to `build/logs/rpp_server.log`.
+`scripts/run.sh` resolves paths from the repository root and runs `rgb` and `yuv` serially unless one workload is selected. Each workload executable is a separate process and initializes its own in-memory engine. Pass the model through `-m/--model`; when that option is omitted, the script uses `weights/yolov8s.onnx` only if the user has placed that local file there. Reference inputs come from `build/assets`, and rendered images are written to `build/output`. If `/usr/local/rpp/bin/rpp_server` exists, the script ensures it is running before launch and writes its log to `build/logs/rpp_server.log`.
 
 `scripts/benchmark.sh` saves the full console log to `build/logs/benchmark_<demo>_<timestamp>.log`.
 
@@ -190,26 +190,11 @@ build/bin/yolov8_yuv_frame_demo \
 
 When running binaries directly, make sure `rpp_server` is already running if the installed RPP environment requires it.
 
-### OpenRT Engine Cache
+### In-Memory OpenRT Engine
 
-The first run builds a BF16 OpenRT engine from the selected ONNX model and stores it beside the model under `.engine_cache/`. Later runs reuse that engine when the ONNX content fingerprint, OpenRT version, precision, and engine integrity checksum still match. A changed model, missing checksum, or damaged cache triggers an automatic rebuild from ONNX.
+At process startup, the application builds one BF16 OpenRT engine directly from the complete original ONNX graph. The engine remains resident in the `YoloV8Pipeline` instance and is reused for every frame processed by that instance. No persistent engine file is required or generated.
 
-```text
-/path/to/.engine_cache/
-  model.onnx.openrt<version>.bf16.<model-fingerprint>.engine
-  model.onnx.openrt<version>.bf16.<model-fingerprint>.engine.fnv1a
-```
-
-The model directory must be writable to persist the cache. If it is read-only, inference can still use the engine built in memory, but the next process must build it again. Engine files are generated artifacts tied to the local OpenRT/RPP environment and must not be packaged as portable model files.
-
-For correctness validation of large YOLOv8 exports, `--rebuild-engine` keeps the complete original ONNX graph and normal BF16 build policy, while deliberately skipping both cache loading and cache writing:
-
-```shell
-scripts/run.sh --model /path/to/model.onnx --demo yuv --rebuild-engine
-scripts/benchmark.sh --model /path/to/model.onnx --demo yuv --loop 20 --rebuild-engine
-```
-
-Engine construction is excluded from the reported frame latency. Because this mode rebuilds at every process start, use it as a correctness workaround and validation mode until engine deserialization is verified by the installed OpenRT/RPP release.
+Engine construction is excluded from the reported per-frame latency. Production integrations should initialize one long-lived pipeline and submit frames to it continuously instead of recreating the pipeline for every frame.
 
 For full command-line options and expected output, see the per-demo guides:
 
@@ -303,7 +288,7 @@ For a new YOLOv8-style application:
 - Supported output heads contain four pixel-space `xywh` channels followed by class scores, without embedded NMS.
 - The repository does not distribute, download, or verify ONNX model files.
 - COCO labels are embedded. Other taxonomies render as `class_<id>` unless the application is extended with the matching label table.
-- Reported performance is local validation data and requires review on the target hardware and SDK stack.
+- Reported performance is reference validation data. Revalidate it on the target hardware and software stack.
 
 ## Troubleshooting
 
@@ -355,9 +340,9 @@ Validation included ONNX checker, OpenRT/RPP engine construction, one full-pipel
 | YOLOv8l 1280×1024 | 4.453 ms | 82.287 ms | 6.583 ms | 93.323 ms | 10.716 | PASS |
 | YOLOv8x 1280×1024 | 4.560 ms | 137.005 ms | 6.773 ms | 148.337 ms | 6.741 | PASS |
 
-Each result is the average of 20 measured loops after one full-pipeline warmup. End-to-end latency is `preprocess + inference + postprocess`; model initialization and visualization are excluded. These measurements describe the local RPP validation environment and are not cross-platform performance guarantees.
+Each result is the average of 20 measured loops after one full-pipeline warmup. End-to-end latency is `preprocess + inference + postprocess`; model initialization and visualization are excluded. These measurements are reference results from the validated RPP environment and are not cross-platform performance guarantees.
 
-> **Review required:** Confirm the target accelerator, SDK, driver, firmware, clock, utilization, and power configuration before using these values in an external performance commitment.
+> **Note:** Revalidate performance on the target accelerator and software stack before capacity planning or deployment sizing.
 
 ## Appendix: Export ONNX From a PT Model
 
@@ -495,7 +480,7 @@ scripts/run.sh --model /path/to/model.onnx --demo yuv
 scripts/benchmark.sh --model /path/to/model.onnx
 ```
 
-`scripts/run.sh` 会从仓库根目录解析路径；未显式选择 workload 时会串行运行 `rgb` 和 `yuv`。通常通过 `-m/--model` 指定模型；省略该参数时，仅当用户已自行放置 `weights/yolov8s.onnx`，脚本才使用该本地 fallback。参考输入从 `build/assets` 读取，绘制结果写入 `build/output`。如果存在 `/usr/local/rpp/bin/rpp_server`，脚本会在启动前确保服务运行，并把日志写入 `build/logs/rpp_server.log`。
+`scripts/run.sh` 会从仓库根目录解析路径；未显式选择 workload 时会串行运行 `rgb` 和 `yuv`。两个 workload 可执行程序是独立进程，各自初始化一个内存 engine。通常通过 `-m/--model` 指定模型；省略该参数时，仅当用户已自行放置 `weights/yolov8s.onnx`，脚本才使用该本地 fallback。参考输入从 `build/assets` 读取，绘制结果写入 `build/output`。如果存在 `/usr/local/rpp/bin/rpp_server`，脚本会在启动前确保服务运行，并把日志写入 `build/logs/rpp_server.log`。
 
 `scripts/benchmark.sh` 会把完整控制台日志保存到 `build/logs/benchmark_<demo>_<timestamp>.log`。
 
@@ -630,26 +615,11 @@ build/bin/yolov8_yuv_frame_demo \
 
 如果直接运行二进制，请确认当前 RPP 环境需要的 `rpp_server` 已经启动。
 
-### OpenRT Engine 缓存
+### 内存常驻 OpenRT Engine
 
-首次运行会从指定 ONNX 模型构建 BF16 OpenRT engine，并保存到模型同级目录的 `.engine_cache/`。后续运行仅在 ONNX 内容指纹、OpenRT 版本、精度配置和 engine 完整性校验均一致时复用缓存。模型发生变化、校验文件缺失或缓存损坏时，会自动回退到 ONNX 并重新构建。
+应用在进程启动时直接从完整原生 ONNX 图构建一个 BF16 OpenRT engine。该 engine 常驻于 `YoloV8Pipeline` 实例中，并被该实例处理的所有帧持续复用。运行不需要也不会生成持久化 engine 文件。
 
-```text
-/path/to/.engine_cache/
-  model.onnx.openrt<version>.bf16.<model-fingerprint>.engine
-  model.onnx.openrt<version>.bf16.<model-fingerprint>.engine.fnv1a
-```
-
-模型所在目录必须可写，才能持久保存缓存。如果目录只读，本次进程仍可使用内存中刚构建的 engine，但下次启动需要重新构建。Engine 是与本机 OpenRT/RPP 环境绑定的生成产物，不能作为可移植模型文件发布。
-
-验证大尺寸 YOLOv8 导出模型时，可以使用 `--rebuild-engine`。该模式保留完整原生 ONNX 图和标准 BF16 构建策略，并明确跳过 engine cache 的读取和写入：
-
-```shell
-scripts/run.sh --model /path/to/model.onnx --demo yuv --rebuild-engine
-scripts/benchmark.sh --model /path/to/model.onnx --demo yuv --loop 20 --rebuild-engine
-```
-
-报告的单帧延迟不包含 engine 构建时间。该模式会在每个进程启动时重新构建，建议在当前 OpenRT/RPP 版本尚未验证 engine 反序列化之前，将其作为正确性规避和验证模式使用。
+报告的单帧延迟不包含 engine 构建时间。生产集成应初始化一个长生命周期 pipeline 并持续向其提交帧，避免为每一帧重新创建 pipeline。
 
 完整命令行选项和预期输出见 demo 级文档：
 
@@ -740,7 +710,7 @@ scripts/benchmark.sh --model /path/to/model.onnx --demo yuv --loop 20 --rebuild-
 - 支持的输出 head 由 4 个像素坐标 `xywh` 通道和类别分数组成，不包含内嵌 NMS。
 - 仓库不分发、下载或校验 ONNX 模型文件。
 - 内置 COCO 标签；其他类别体系在未扩展匹配标签表时显示为 `class_<id>`。
-- 文档中的性能数据为本地验证结果，必须在目标硬件和 SDK 软件栈上复核。
+- 文档中的性能数据为参考验证结果，请在目标硬件和软件栈上重新验证。
 
 ## 故障排查
 
@@ -792,9 +762,9 @@ scripts/benchmark.sh --model /path/to/model.onnx --demo yuv --loop 20 --rebuild-
 | YOLOv8l 1280×1024 | 4.453 ms | 82.287 ms | 6.583 ms | 93.323 ms | 10.716 | PASS |
 | YOLOv8x 1280×1024 | 4.560 ms | 137.005 ms | 6.773 ms | 148.337 ms | 6.741 | PASS |
 
-每项结果均为完整 pipeline warmup 1 次后正式测量 20 次的平均值。端到端耗时为 `前处理 + 推理 + 后处理`，不包含模型初始化和可视化。这些数据仅代表本地 RPP 验证环境，不构成跨平台性能保证。
+每项结果均为完整 pipeline warmup 1 次后正式测量 20 次的平均值。端到端耗时为 `前处理 + 推理 + 后处理`，不包含模型初始化和可视化。这些数据是已验证 RPP 环境下的参考结果，不构成跨平台性能保证。
 
-> **需要复核：** 将这些数据用于对外性能承诺前，必须确认目标加速卡、SDK、驱动、固件、频率、利用率和功耗配置。
+> **说明：** 进行容量规划或部署规格评估前，请在目标加速卡和软件栈上重新验证性能。
 
 ## 附录：从 PT 模型导出 ONNX
 

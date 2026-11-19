@@ -103,10 +103,11 @@ Draw boxes and save rendered image
 
 ## Output
 
-The demo prints stage banners, cache status, progress, and a performance report:
+The demo prints engine-build status, progress, and a performance report:
 
 ```text
-[ENGINE  ] Reusing cached OpenRT engine: <cache-path>
+[ENGINE  ] Building an in-memory BF16 engine from complete ONNX: <model-path>
+[ENGINE  ] In-memory BF16 engine is ready.
 [WARMUP  ] Running 1 unmeasured frame for stable performance
 [BENCH   ] Measuring <loop> full-pipeline frames
 End-to-end FPS           : <fps>
@@ -240,10 +241,11 @@ Warmup：完整执行一次 pipeline
 
 ## 输出
 
-demo 会打印阶段 banner、缓存状态、运行进度和性能报告：
+demo 会打印内存 engine 构建状态、运行进度和性能报告：
 
 ```text
-[ENGINE  ] Reusing cached OpenRT engine: <cache-path>
+[ENGINE  ] Building an in-memory BF16 engine from complete ONNX: <model-path>
+[ENGINE  ] In-memory BF16 engine is ready.
 [WARMUP  ] Running 1 unmeasured frame for stable performance
 [BENCH   ] Measuring <loop> full-pipeline frames
 End-to-end FPS           : <fps>

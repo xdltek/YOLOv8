@@ -21,8 +21,8 @@ public:
      * @brief Store the ONNX path used during runtime engine initialization.
      * @param onnx_path Path to a YOLO-compatible ONNX model file.
      */
-    explicit RppInferEngine(const std::string& onnx_path, bool rebuild_engine = false)
-        : onnx_model_path_(onnx_path), rebuild_engine_(rebuild_engine) {}
+    explicit RppInferEngine(const std::string& onnx_path)
+        : onnx_model_path_(onnx_path) {}
 
     /**
      * @brief Parse ONNX, build the OpenRT engine, allocate bindings, and create execution context.
@@ -75,7 +75,6 @@ private:
      */
     bool executeContext();
 
-    std::unique_ptr<infer1::IRuntime> runtime_ptr_ {nullptr};
     std::shared_ptr<infer1::IEngine> engine_ptr_ {nullptr};
     std::shared_ptr<samplesCommon::RppBufferManager> buffer_ptr_ {nullptr};
     std::unique_ptr<infer1::IExecutionContext> context_ptr_ {nullptr};
@@ -84,7 +83,6 @@ private:
     int input_height_ = 0;
     size_t output_tensor_size_ = 0;
     std::string onnx_model_path_;
-    bool rebuild_engine_ = false;
 
     std::string input_name_;
     std::string output_name_;

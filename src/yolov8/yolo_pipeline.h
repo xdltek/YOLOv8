@@ -24,7 +24,6 @@ class YoloV8Postprocessor;
 struct YoloV8PipelineOptions
 {
     std::string model_path;
-    bool rebuild_engine = false;
     int inference_count = 1;
     YoloV8Config config;
 };

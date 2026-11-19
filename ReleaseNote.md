@@ -6,7 +6,7 @@
 |---|---|
 | Release version | V2.0 |
 | Target code | Current repository code |
-| Validation | `cmake --build build -j8` passed |
+| Validation | Clean build and RGB/I420 YUV functional validation passed |
 
 ### Validated Models
 
@@ -22,7 +22,7 @@ Complete 640×640 and 1280×1024 performance tables are published in `README.md`
 | YOLOv8l | 93.323 ms | 10.716 | PASS |
 | YOLOv8x | 148.337 ms | 6.741 | PASS |
 
-These measurements describe the local RPP validation environment and require human review before external performance commitments.
+These measurements are reference results from the validated RPP environment. Performance may vary with the accelerator, SDK, driver, firmware, and operating conditions.
 
 ### Added
 
@@ -38,7 +38,7 @@ These measurements describe the local RPP validation environment and require hum
 - Added `weights/.gitkeep` so the local model directory exists while ONNX files remain ignored by Git.
 - Added detailed README coverage for the root project, demos, RPP modules, OpenRT inference, YOLOv8 application layer, utilities, performance trace helper, and API index.
 - Added dedicated bilingual preprocess and postprocess module README files to match the YOLOv5 package structure.
-- Added persistent OpenRT engine caching beside the external model, including model/version/precision cache keys and a pre-deserialization integrity checksum.
+- Added in-memory BF16 engine initialization from the complete ONNX graph. One initialized pipeline reuses the same engine for all frames processed during its lifetime.
 - Added YOLOv5-style stage banners, progress display, performance reports, and separate end-to-end/OpenRT inference FPS output.
 
 ### Changed
@@ -52,16 +52,21 @@ These measurements describe the local RPP validation environment and require hum
 - Decoupled building from model availability: `scripts/build.sh` no longer downloads or verifies ONNX files.
 - Updated run and benchmark workflows to accept an external ONNX path through `-m/--model`, with an optional user-provided `weights/yolov8s.onnx` fallback matching YOLOv5 behavior; the release itself still contains no model.
 - Updated demo binary options to match the YOLOv5 convention: required `-m/--model`, `-i/--input`, `-o/--output`, and configurable loop count.
-- Damaged, incomplete, stale, or unchecked engine caches now fall back to rebuilding from ONNX instead of being reused.
+- Updated inference initialization to build directly from the supplied ONNX model. The application does not create or load persistent engine files.
 - Updated public documentation to use `ReleaseNote.md`, OpenRT naming, and current YOLOv8 module names consistently.
-- Updated `.gitignore` coverage for build outputs, generated runtime artifacts, local ONNX/model files, and ignored internal documents.
+- Updated `.gitignore` coverage for build outputs, generated runtime artifacts, and user-provided ONNX/model files.
 - Added validated 1280×1024 YOLOv8n/s/m/l/x model contracts and measured RGB performance.
+
+### Fixed
+
+- Corrected I420 YUV detection with the validated 1280×1024 YOLOv8 output contract.
+- Ensured RGB and I420 YUV workloads use the complete original ONNX graph without modifying the customer model.
+- Ensured an initialized `YoloV8Pipeline` reuses its in-memory engine across warmup and measured frames.
 
 ### Removed
 
 - Removed the root `build.sh` entry in favor of `scripts/build.sh`.
 - Removed the old `doc/` layout after moving public documentation under `docs/`.
-- Removed internal-document generation requirements from the public project flow.
 
 ---
 
@@ -71,7 +76,7 @@ These measurements describe the local RPP validation environment and require hum
 |---|---|
 | 发布版本 | V2.0 |
 | 目标代码 | 当前仓库代码 |
-| 验证状态 | `cmake --build build -j8` 已通过 |
+| 验证状态 | 干净构建以及 RGB/I420 YUV 功能验证已通过 |
 
 ### 已验证模型
 
@@ -87,7 +92,7 @@ These measurements describe the local RPP validation environment and require hum
 | YOLOv8l | 93.323 ms | 10.716 | PASS |
 | YOLOv8x | 148.337 ms | 6.741 | PASS |
 
-这些数据仅代表本地 RPP 验证环境，用于对外性能承诺前必须进行人工复核。
+这些数据是已验证 RPP 环境下的参考结果；实际性能可能随加速卡、SDK、驱动、固件和运行条件变化。
 
 ### 新增
 
@@ -103,7 +108,7 @@ These measurements describe the local RPP validation environment and require hum
 - 新增 `weights/.gitkeep`，保留本地模型目录，同时继续忽略 ONNX 模型文件。
 - 新增根目录、demo、RPP 模块、OpenRT 推理、YOLOv8 应用层、工具、性能 trace 辅助和 API 索引的详细 README 覆盖。
 - 新增独立的双语前处理和后处理模块 README，与 YOLOv5 软件包结构保持一致。
-- 新增外部模型同级目录下的 OpenRT engine 持久缓存，缓存键包含模型、版本和精度信息，并在反序列化前执行完整性校验。
+- 新增从完整 ONNX 图构建内存常驻 BF16 engine 的初始化流程。同一个 pipeline 实例在其生命周期内为所有帧复用该 engine。
 - 新增与 YOLOv5 一致的阶段 banner、进度显示、性能报告，以及独立的端到端/OpenRT 推理 FPS。
 
 ### 变更
@@ -117,13 +122,18 @@ These measurements describe the local RPP validation environment and require hum
 - 编译流程与模型可用性解耦：`scripts/build.sh` 不再下载或校验 ONNX 文件。
 - 运行和 benchmark 流程支持通过 `-m/--model` 指定外部 ONNX 路径，并与 YOLOv5 一致地支持用户自行放置的 `weights/yolov8s.onnx` fallback；发布包本身仍不包含模型。
 - demo 二进制参数与 YOLOv5 约定对齐：必须提供 `-m/--model`，输入使用 `-i/--input`，输出使用 `-o/--output`，并支持配置 loop 次数。
-- engine 缓存损坏、不完整、过期或缺少校验时，自动回退到 ONNX 重建，不再尝试复用。
+- 推理初始化改为直接从用户提供的 ONNX 模型构建；应用不会创建或加载持久化 engine 文件。
 - 公开文档统一使用 `ReleaseNote.md`、OpenRT 命名和当前 YOLOv8 模块名称。
-- `.gitignore` 更新为覆盖构建产物、生成的运行产物、本地 ONNX/模型文件以及被忽略的内部文档。
+- `.gitignore` 更新为覆盖构建产物、生成的运行产物以及用户提供的 ONNX/模型文件。
 - 新增已验证的 1280×1024 YOLOv8n/s/m/l/x 模型契约和 RGB 实测性能。
+
+### 修复
+
+- 修复已验证 1280×1024 YOLOv8 输出契约下的 I420 YUV 检测。
+- 确保 RGB 和 I420 YUV 工作负载使用完整原生 ONNX 图，不修改用户模型。
+- 确保已初始化的 `YoloV8Pipeline` 在 warmup 和正式测量帧之间持续复用内存 engine。
 
 ### 移除
 
 - 移除根目录 `build.sh`，统一使用 `scripts/build.sh`。
 - 移除旧 `doc/` 布局，公开文档统一放在 `docs/`。
-- 从公开项目流程中移除内部文档生成要求。

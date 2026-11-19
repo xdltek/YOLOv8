@@ -106,7 +106,7 @@ bool YoloV8Pipeline::init(const YoloV8PipelineOptions& options, const std::vecto
     }
 
     // Build the model engine first so input/output dimensions can drive downstream modules.
-    infer_engine_ = std::make_unique<RppInferEngine>(options.model_path, options.rebuild_engine);
+    infer_engine_ = std::make_unique<RppInferEngine>(options.model_path);
     if (!infer_engine_->init()) {
         std::cerr << "Failed to initialize RPP inference engine." << std::endl;
         return false;

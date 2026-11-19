@@ -25,7 +25,6 @@ Options:
   -l, --loop COUNT      Measured loop count. Default: 1
       --yuv-width N     I420 width for the YUV workload. Default: 1280
       --yuv-height N    I420 height for the YUV workload. Default: 720
-      --rebuild-engine  Build a fresh BF16 engine from the complete ONNX; do not read or write cache.
   -h, --help            Show this help message.
 EOF
 }
@@ -97,8 +96,6 @@ run_demo() {
             ;;
     esac
 
-    [[ "${rebuild_engine}" == "1" ]] && args+=(--rebuild-engine)
-
     if [[ ! -x "${bin}" ]]; then
         echo "${RED}[ERROR   ]${RESET} Application executable not found: ${bin}" >&2
         echo "${CYAN}[ACTION  ]${RESET} Build the project first with: scripts/build.sh" >&2
@@ -131,7 +128,6 @@ build_dir="build"
 loop_count="1"
 yuv_width="1280"
 yuv_height="720"
-rebuild_engine="0"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -166,10 +162,6 @@ while [[ $# -gt 0 ]]; do
         --yuv-height)
             yuv_height="$2"
             shift 2
-            ;;
-        --rebuild-engine)
-            rebuild_engine="1"
-            shift
             ;;
         -h|--help)
             show_help
