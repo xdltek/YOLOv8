@@ -19,7 +19,7 @@ It helps users quickly build the project, run inference with default settings, a
 - [How to Build](#how-to-build)
 - [How to Run](#how-to-run)
 - [Direct Binary Usage](#direct-binary-usage)
-- [Code Execution Workflow](#code-execution-workflow)
+- [Processing Workflow](#processing-workflow)
 - [Key Source Files](#key-source-files)
 - [Reusable Components](#reusable-components)
 - [How to Adapt This Demo](#how-to-adapt-this-demo)
@@ -201,45 +201,49 @@ For full command-line options and expected output, see the per-demo guides:
 - [RGB image demo](demos/rgb_image/README.md): RGB/BGR image demo guide.
 - [I420 YUV frame demo](demos/yuv_frame/README.md): I420 YUV frame demo guide.
 
-## Code Execution Workflow
+## Processing Workflow
 
 ```text
-+------------------------+
-| Parse CLI arguments    |
-| and resolve input paths|
-+------------------------+
-            |
-            v
-+------------------------+
-| Init optional perf     |
-| trace session in perf  |
-| builds                 |
-+------------------------+
-            |
-            v
-+------------------------+
-| Init YOLOv8 pipeline   |
-| and OpenRT engine      |
-+------------------------+
-            |
-            v
-+------------------------+
-| Run full pipeline once |
-| as explicit warmup     |
-+------------------------+
-            |
-            v
-+------------------------+
-| Run measured pipeline: |
-| preprocess + infer +   |
-| postprocess            |
-+------------------------+
-            |
-            v
-+------------------------+
-| Draw boxes, save image,|
-| print latency and FPS  |
-+------------------------+
++---------------------------+       +---------------------------+
+| demos/rgb_image/main.cpp  |       | demos/yuv_frame/main.cpp  |
+| Decode RGB/BGR image      |       | Read packed I420 frame    |
++-------------+-------------+       +-------------+-------------+
+              |                                   |
+              +-----------------+-----------------+
+                                |
+                                v
+              +-----------------------------------+
+              | src/yolov8/YoloV8Pipeline        |
+              | Init once; warmup once; run loops|
+              +-----------------+-----------------+
+                                |
+                                v
+              +-----------------------------------+
+              | rpp/preprocess/RppYoloPreprocessor|
+              | H2D -> letterbox -> color convert |
+              | -> normalize -> FP32 NCHW tensor  |
+              +-----------------+-----------------+
+                                |
+                                v
+              +-----------------------------------+
+              | rpp/inference/RppInferEngine      |
+              | Build one in-memory BF16 engine   |
+              | from ONNX and execute inference   |
+              +-----------------+-----------------+
+                                |
+                                v
+              +-----------------------------------+
+              | rpp/postprocess/                  |
+              | YoloV8Postprocessor               |
+              | transpose [C,N] -> [N,C] -> BF16  |
+              | -> box/class slice -> NMS         |
+              +-----------------+-----------------+
+                                |
+                                v
+              +-----------------------------------+
+              | Restore boxes to source image     |
+              | Draw, save, and report latency/FPS|
+              +-----------------------------------+
 ```
 
 ## Key Source Files
@@ -444,7 +448,7 @@ scripts/run.sh \
 - [如何构建](#如何构建)
 - [如何运行](#如何运行)
 - [直接执行二进制](#直接执行二进制)
-- [代码执行流程](#代码执行流程)
+- [处理流程](#处理流程)
 - [关键源码](#关键源码)
 - [可复用组件](#可复用组件)
 - [如何适配此 Demo](#如何适配此-demo)
@@ -626,42 +630,49 @@ build/bin/yolov8_yuv_frame_demo \
 - [RGB 图片 demo](demos/rgb_image/README.md)：RGB/BGR 图片 demo 指南。
 - [I420 YUV 帧 demo](demos/yuv_frame/README.md)：I420 YUV 帧 demo 指南。
 
-## 代码执行流程
+## 处理流程
 
 ```text
-+------------------------+
-| 解析命令行参数和路径   |
-+------------------------+
-            |
-            v
-+------------------------+
-| perf 构建中初始化可选  |
-| trace session          |
-+------------------------+
-            |
-            v
-+------------------------+
-| 初始化 YOLOv8 pipeline |
-| 和 OpenRT engine       |
-+------------------------+
-            |
-            v
-+------------------------+
-| 显式执行一次完整 warmup|
-+------------------------+
-            |
-            v
-+------------------------+
-| 执行测量 pipeline：    |
-| preprocess + infer +   |
-| postprocess            |
-+------------------------+
-            |
-            v
-+------------------------+
-| 绘制检测框、保存图片、 |
-| 打印 latency 和 FPS    |
-+------------------------+
++---------------------------+       +---------------------------+
+| demos/rgb_image/main.cpp  |       | demos/yuv_frame/main.cpp  |
+| 解码 RGB/BGR 图片         |       | 读取 packed I420 帧       |
++-------------+-------------+       +-------------+-------------+
+              |                                   |
+              +-----------------+-----------------+
+                                |
+                                v
+              +-----------------------------------+
+              | src/yolov8/YoloV8Pipeline        |
+              | 初始化一次、warmup 一次、循环执行|
+              +-----------------+-----------------+
+                                |
+                                v
+              +-----------------------------------+
+              | rpp/preprocess/RppYoloPreprocessor|
+              | H2D -> letterbox -> 颜色转换      |
+              | -> 归一化 -> FP32 NCHW tensor    |
+              +-----------------+-----------------+
+                                |
+                                v
+              +-----------------------------------+
+              | rpp/inference/RppInferEngine      |
+              | 从 ONNX 构建内存常驻 BF16 engine |
+              | 并执行推理                        |
+              +-----------------+-----------------+
+                                |
+                                v
+              +-----------------------------------+
+              | rpp/postprocess/                  |
+              | YoloV8Postprocessor               |
+              | transpose [C,N] -> [N,C] -> BF16  |
+              | -> 框/类别切分 -> NMS             |
+              +-----------------+-----------------+
+                                |
+                                v
+              +-----------------------------------+
+              | 映射检测框到原图坐标              |
+              | 绘制、保存并报告 latency/FPS      |
+              +-----------------------------------+
 ```
 
 ## 关键源码
